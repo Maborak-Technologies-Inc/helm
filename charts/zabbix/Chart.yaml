@@ -1,5 +1,5 @@
 apiVersion: v2
-name: zabbix-stack
+name: zabbix
 description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
 version: 0.1.1
 appVersion: "7.2.2"
