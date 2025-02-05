@@ -3,14 +3,14 @@ name: Publish Helm Charts
 on:
   push:
     branches:
-      - main # Trigger the workflow when you push changes to the main branch
+      - main
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code
+      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -18,26 +18,25 @@ jobs:
       - name: Set up Helm CLI
         uses: azure/setup-helm@v3
         with:
-          version: v3.9.0 # Replace with the desired Helm version
+          version: v3.9.0
 
       # Step 3: Package Helm charts
       - name: Package Helm Charts
         run: |
-          mkdir -p packaged
-          for chart in */Chart.yaml; do
-            helm package "$(dirname "$chart")" --destination packaged
+          mkdir -p charts/packaged
+          for chart in charts/*/Chart.yaml; do
+            helm package "$(dirname "$chart")" --destination charts/packaged
           done
 
-      # Step 4: Generate or update index.yaml
-      - name: Update index.yaml
+      # Step 4: Generate index.yaml
+      - name: Generate index.yaml
         run: |
-          helm repo index packaged --url https://maborak-technologies-inc.github.io/helm
-          mv packaged/* .
+          helm repo index charts/packaged --url https://maborak-technologies-inc.github.io/helm
 
-      # Step 5: Deploy to GitHub Pages
-      - name: Commit and push to gh-pages branch
+      # Step 5: Deploy to gh-pages
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: . # Deploy everything in the current directory to gh-pages
+          publish_dir: charts/packaged
           publish_branch: gh-pages
