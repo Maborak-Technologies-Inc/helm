@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart-name" . }}-ui
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui
+spec:
+  replicas: {{ .Values.replicas.zabbixUI }}
+  selector:
+    matchLabels:
+      app: {{ include "chart-name" . }}-ui
+  template:
+    metadata:
+      labels:
+        app: {{ include "chart-name" . }}-ui
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: ui
+    spec:
+      initContainers:
+        - name: init-config
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cp /config/zabbix.conf.php /tmp/zabbix.conf.php
+              sed -i "s|KUBERNETES_POD_HOSTNAME|${POD_NAME}|g" /tmp/zabbix.conf.php
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: zabbix-config
+              mountPath: /tmp
+            - name: secret-volume
+              mountPath: /secrets
+              readOnly: true
+      containers:
+        - name: {{ include "chart-name" . }}-zabbix-ui
+          image: "{{ .Values.images.zabbixUI.repository }}:{{ .Values.images.zabbixUI.tag }}"
+          imagePullPolicy: {{ .Values.images.zabbixUI.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: true
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_PASSWORD
+            - name: ZABBIX_SERVER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "chart-name" . }}-config
+                  key: zabbix_server_name
+            - name: DB_SERVER
+              value: {{ include "zabbix-mariadb-chart.dbServer" . }}
+            - name: ZABBIX_SERVER
+              value: {{ include "zabbix-mariadb-chart.zabbixServerHostname" . }}
+            - name: ZABBIX_SERVER_PORT
+              value: "{{ .Values.config.zabbixServerPort }}"
+          resources:
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: "/var/www/html/debug.php"
+              subPath: "zabbix_debug"
+              readOnly: false
+            - name: zabbix-config
+              mountPath: /var/www/html/conf/zabbix.conf.php
+              subPath: zabbix.conf.php
+      volumes:
+        - name: zabbix-config
+          emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: {{ include "chart-name" . }}-config
+        - name: secret-volume
+          secret:
+            secretName: {{ include "chart-name" . }}-db-secret

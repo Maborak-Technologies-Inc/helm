@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-name" . }}-mariadb-pvc
+spec:
+  accessModes:
+    - {{ .Values.storage.mariadb.accessModes | first }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.mariadb.size }}

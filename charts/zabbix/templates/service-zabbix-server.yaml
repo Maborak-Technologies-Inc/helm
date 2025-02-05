@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart-name" . }}-server
+  labels:
+    app: {{ include "chart-name" . }}-server
+spec:
+  selector:
+    app: {{ include "chart-name" . }}-server
+  ports:
+    - protocol: TCP
+      port: 9997
+      targetPort: 9997

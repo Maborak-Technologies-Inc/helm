@@ -1,0 +1,100 @@
+replicas:
+  zabbixServer: 1
+  zabbixUI: 1
+  mariadb: 1
+
+resources:
+  limits:
+    memory: "1Gi"
+    cpu: "1"
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+
+storage:
+  mariadb:
+    size: "5Gi"
+    accessModes:
+      - ReadWriteOnce
+
+config:
+  zabbixServerName: "ZabbixNetes"
+  dbServer: "mariadb" 
+  dbPort: "3306"
+  zabbixServer: "zabbix-server"
+  zabbixServerPort: "9997"
+
+secrets:
+  mariadbRootPassword: "rootpassword"
+  mariadbDatabase: "zabbix"
+  mariadbUser: "zabbix"
+  mariadbPassword: "zabbixpassword"
+
+images:
+  zabbixServer:
+    repository: maborak/zabbix-server
+    tag: "latest"
+    pullPolicy: Always
+  zabbixUI:
+    repository: maborak/zabbix-ui
+    tag: "latest"
+    pullPolicy: Always
+  mariadb:
+    repository: maborak/zabbix-db
+    tag: "latest"
+    pullPolicy: Always
+
+healthChecks:
+  zabbixServer:
+    livenessProbe:
+      tcpSocket:
+        port: 9997
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 9997
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  zabbixUI:
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  mariadb:
+    livenessProbe:
+      exec:
+        command:
+          - mysqladmin
+          - ping
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      exec:
+        command:
+          - mysqladmin
+          - ping
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3

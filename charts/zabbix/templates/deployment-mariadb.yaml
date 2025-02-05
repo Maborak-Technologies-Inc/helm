@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart-name" . }}-mariadb
+spec:
+  replicas: {{ .Values.replicas.mariadb }}
+  selector:
+    matchLabels:
+      app: {{ include "chart-name" . }}-mariadb
+  template:
+    metadata:
+      labels:
+        app: {{ include "chart-name" . }}-mariadb
+    spec:
+      containers:
+        - name: {{ include "chart-name" . }}-mariadb
+          image: "{{ .Values.images.mariadb.repository }}:{{ .Values.images.mariadb.tag }}"
+          imagePullPolicy: {{ .Values.images.mariadb.pullPolicy }}
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_ROOT_PASSWORD
+            - name: MARIADB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_DATABASE
+            - name: MARIADB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_USER
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_PASSWORD
+          resources:
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+          volumeMounts:
+            - name: mariadb-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-storage
+          persistentVolumeClaim:
+            claimName: {{ include "chart-name" . }}-mariadb-pvc

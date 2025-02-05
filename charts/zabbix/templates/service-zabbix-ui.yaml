@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart-name" . }}-ui
+  labels:
+    app: {{ include "chart-name" . }}-ui
+spec:
+  selector:
+    app: {{ include "chart-name" . }}-ui
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer

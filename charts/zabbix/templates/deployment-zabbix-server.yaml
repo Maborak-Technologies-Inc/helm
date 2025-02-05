@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart-name" . }}-server
+spec:
+  replicas: {{ .Values.replicas.zabbixServer }}
+  selector:
+    matchLabels:
+      app: {{ include "chart-name" . }}-server
+  template:
+    metadata:
+      labels:
+        app: {{ include "chart-name" . }}-server
+    spec:
+      volumes:
+        - name: zabbix-config
+          emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: {{ include "chart-name" . }}-config
+        - name: secret-volume
+          secret:
+            secretName: {{ include "chart-name" . }}-db-secret
+      initContainers:
+        - name: init-config
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cp /config/zabbix_server.conf /tmp/zabbix_server.conf
+              sed -i "s/DBHost=.*/DBHost={{ include "zabbix-mariadb-chart.dbServer" . }}/g" /tmp/zabbix_server.conf
+              sed -i "s/DBPassword=\${MARIADB_PASSWORD}/DBPassword=$(cat /secrets/MARIADB_PASSWORD)/g" /tmp/zabbix_server.conf
+              cat /tmp/zabbix_server.conf
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: zabbix-config
+              mountPath: /tmp
+            - name: secret-volume
+              mountPath: /secrets
+              readOnly: true
+      containers:
+        - name: {{ include "chart-name" . }}-zabbix-server
+          image: "{{ .Values.images.zabbixServer.repository }}:{{ .Values.images.zabbixServer.tag }}"
+          imagePullPolicy: {{ .Values.images.zabbixServer.pullPolicy }}
+          env:
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart-name" . }}-db-secret
+                  key: MARIADB_PASSWORD
+          resources:
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+          volumeMounts:
+            - name: zabbix-config
+              mountPath: /var/lib/zabbix/etc/zabbix_server.conf
+              subPath: zabbix_server.conf
