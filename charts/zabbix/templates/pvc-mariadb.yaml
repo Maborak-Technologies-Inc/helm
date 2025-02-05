@@ -3,6 +3,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "chart-name" . }}-mariadb-pvc
 spec:
+  {{- if .Values.storage.storageClass }}
+  storageClassName: {{ .Values.storage.storageClass }}
+  {{- else if (lookup "storage.k8s.io/v1" "StorageClass" "" "local-path") }}
+  storageClassName: local-path
+  {{- end }}
   accessModes:
     - {{ .Values.storage.mariadb.accessModes | first }}
   resources:
