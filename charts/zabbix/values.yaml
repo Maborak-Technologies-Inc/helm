@@ -12,6 +12,7 @@ resources:
     cpu: "500m"
 
 storage:
+  storageClassName: ""
   mariadb:
     size: "5Gi"
     accessModes:
