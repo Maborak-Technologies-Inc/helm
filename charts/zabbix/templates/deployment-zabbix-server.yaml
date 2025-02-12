@@ -24,12 +24,18 @@ spec:
       initContainers:
         - name: init-config
           image: alpine
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           command: ["/bin/sh", "-c"]
           args:
             - |
               cp /config/zabbix_server.conf /tmp/zabbix_server.conf
               sed -i "s/DBHost=.*/DBHost={{ include "zabbix-mariadb-chart.dbServer" . }}/g" /tmp/zabbix_server.conf
               sed -i "s/DBPassword=\${MARIADB_PASSWORD}/DBPassword=$(cat /secrets/MARIADB_PASSWORD)/g" /tmp/zabbix_server.conf
+              echo "HANodeName=$POD_NAME" >> /tmp/zabbix_server.conf
               cat /tmp/zabbix_server.conf
           volumeMounts:
             - name: config-volume
