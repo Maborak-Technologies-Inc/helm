@@ -65,11 +65,11 @@ spec:
               value: "{{ .Values.config.zabbixServerPort }}"
           resources:
             limits:
-              memory: {{ .Values.resources.limits.memory }}
-              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.zabbixUI.limits.memory }}
+              cpu: {{ .Values.resources.zabbixUI.limits.cpu }}
             requests:
-              memory: {{ .Values.resources.requests.memory }}
-              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.zabbixUI.requests.memory }}
+              cpu: {{ .Values.resources.zabbixUI.requests.cpu }}
           volumeMounts:
             - name: config-volume
               mountPath: "/var/www/html/debug.php"

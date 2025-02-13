@@ -1,15 +1,30 @@
 replicas:
-  zabbixServer: 2
-  zabbixUI: 1
+  zabbixServer: 5
+  zabbixUI: 5
   mariadb: 1
 
 resources:
-  limits:
-    memory: "1Gi"
-    cpu: "1"
-  requests:
-    memory: "512Mi"
-    cpu: "500m"
+  zabbixUI:
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  zabbixServer:
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+  zabbixDB:
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
 
 storage:
   storageClassName: ""

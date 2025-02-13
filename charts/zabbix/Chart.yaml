@@ -3,3 +3,4 @@ name: zabbix
 description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
 version: 0.1.1
 appVersion: "7.2.2"
+icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png  # Add your icon URL here
