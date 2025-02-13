@@ -39,11 +39,11 @@ spec:
                   key: MARIADB_PASSWORD
           resources:
             limits:
-              memory: {{ .Values.resources.limits.memory }}
-              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.zabbixDB.limits.memory }}
+              cpu: {{ .Values.resources.zabbixDB.limits.cpu }}
             requests:
-              memory: {{ .Values.resources.requests.memory }}
-              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.zabbixDB.requests.memory }}
+              cpu: {{ .Values.resources.zabbixDB.requests.cpu }}
           volumeMounts:
             - name: mariadb-storage
               mountPath: /var/lib/mysql
