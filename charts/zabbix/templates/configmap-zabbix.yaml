@@ -23,7 +23,7 @@ data:
     LogType=console
     ListenIP=0.0.0.0
     ListenPort=9997
-    DebugLevel=3
+    DebugLevel=0
     DBHost={{ include "zabbix-mariadb-chart.dbServer" . }}  # Dynamically resolves to "<release-name>-mariadb"
     DBName=zabbix
     DBUser=zabbix

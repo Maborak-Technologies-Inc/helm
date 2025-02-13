@@ -12,6 +12,7 @@ spec:
       labels:
         app: {{ include "chart-name" . }}-server
     spec:
+      serviceAccountName: {{ include "chart-name" . }}-kubectl-executor  # Use Helm templating for SA
       volumes:
         - name: zabbix-config
           emptyDir: {}
@@ -66,3 +67,30 @@ spec:
             - name: zabbix-config
               mountPath: /var/lib/zabbix/etc/zabbix_server.conf
               subPath: zabbix_server.conf
+        - name: label-updater  # Sidecar container
+          image: bitnami/kubectl  # Lightweight Kubernetes CLI image
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              POD_NAME=$(hostname)
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+
+              # Ensure pod has a label before modifying it
+              if ! kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.metadata.labels.mode}' 2>/dev/null; then
+                  echo "Initializing label: mode=standby"
+                  kubectl label pod $POD_NAME -n $NAMESPACE mode=standby --overwrite
+              fi
+
+              while true; do
+                  LOGS=$(kubectl logs $POD_NAME -n $NAMESPACE --tail=500 | grep node 2>/dev/null)
+
+                  if echo "$LOGS" | grep -qE 'node switched to "active" mode|node started in "active" mode'; then
+                      echo "Setting $POD_NAME to active mode."
+                      kubectl label pod $POD_NAME -n $NAMESPACE mode=active --overwrite
+                  else
+                      echo "Setting $POD_NAME to standby mode."
+                      kubectl label pod $POD_NAME -n $NAMESPACE mode=standby --overwrite
+                  fi
+
+                  sleep 10
+              done
