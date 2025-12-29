@@ -7,8 +7,49 @@ This guide documents the complete process of setting up Zabbix using ArgoCD, inc
 - Kubernetes cluster (tested with Docker Desktop Kubernetes)
 - Helm installed
 - ArgoCD CLI installed (`argocd` command)
-- SSH key for accessing private GitHub repositories
+- SSH key for accessing private GitHub repositories (located at `~/.ssh/id_rsa_argocd`)
 - Docker installed (for pulling images locally if needed)
+
+## Quick Start (Complete Setup Script)
+
+For experienced users, here's the complete setup in one script:
+
+```bash
+# Step 1: Install ArgoCD
+kubectl create namespace argocd
+helm install argocd argo/argo-cd -n argocd \
+  --set server.service.type=LoadBalancer \
+  --set controller.applicationNamespaces=""
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+
+# Step 2: Get password and login
+kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
+sleep 3
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+echo "ArgoCD Password: $ARGOCD_PASSWORD"
+argocd login localhost:8080 --insecure --username admin --password "$ARGOCD_PASSWORD"
+
+# Step 3: Configure project
+argocd proj create zabbix --description "Zabbix project"
+argocd proj allow-cluster-resource zabbix "" PersistentVolume
+argocd proj add-source zabbix git@github.com:Maborak-Technologies-Inc/helm.git
+argocd proj add-destination zabbix https://kubernetes.default.svc automated
+
+# Step 4: Add repository and create namespace
+argocd repo add git@github.com:Maborak-Technologies-Inc/helm.git --ssh-private-key-path ~/.ssh/id_rsa_argocd
+kubectl create namespace automated
+
+# Step 5: Create and sync application
+argocd app create prod \
+  --repo git@github.com:Maborak-Technologies-Inc/helm.git \
+  --path charts/zabbix \
+  --dest-name in-cluster \
+  --dest-namespace automated \
+  --project zabbix
+argocd app sync prod
+```
+
+**Note:** See detailed steps below for explanations and troubleshooting.
 
 ## Step 1: Install ArgoCD
 
@@ -45,12 +86,17 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 ### 1.5 Get Admin Password and Login
 
 ```bash
-# Get the initial admin password
+# Get the initial admin password (this will display the password)
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 
+# Save the password to a variable for easier use
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+
 # Login to ArgoCD CLI
-argocd login localhost:8080 --insecure --username admin --password <PASSWORD>
+argocd login localhost:8080 --insecure --username admin --password "$ARGOCD_PASSWORD"
 ```
+
+**Note:** The password is displayed when you run the first command. Save it securely as you'll need it to access the ArgoCD UI at `https://localhost:8080`.
 
 ## Step 2: Create and Configure ArgoCD Project
 
@@ -61,13 +107,30 @@ Create the project and immediately configure it to allow cluster-scoped resource
 argocd proj create zabbix --description "Zabbix project"
 
 # Allow PersistentVolumes (cluster-scoped resource required by Zabbix)
-argocd proj allow-cluster-resource zabbix "" persistentvolumes
+# IMPORTANT: Use PascalCase singular form "PersistentVolume", not "persistentvolumes"
+argocd proj allow-cluster-resource zabbix "" PersistentVolume
+
+# Add repository source to project
+argocd proj add-source zabbix git@github.com:Maborak-Technologies-Inc/helm.git
+
+# Add destination namespace
+argocd proj add-destination zabbix https://kubernetes.default.svc automated
+```
+
+**Or combine all project configuration steps:**
+```bash
+argocd proj create zabbix --description "Zabbix project" && \
+argocd proj allow-cluster-resource zabbix "" PersistentVolume && \
+argocd proj add-source zabbix git@github.com:Maborak-Technologies-Inc/helm.git && \
+argocd proj add-destination zabbix https://kubernetes.default.svc automated
 ```
 
 **Why this is critical:** Zabbix requires PersistentVolumes, which are cluster-scoped resources. ArgoCD projects must explicitly allow cluster-scoped resources, otherwise you'll get errors like:
 ```
-cluster level PersistentVolume "zabbixprod-mariadb-pv" can not be managed when in namespaced mode
+resource :PersistentVolume is not permitted in project zabbix
 ```
+
+**Important Note:** Kubernetes resource kinds are case-sensitive and use PascalCase singular form. Use `PersistentVolume` (not `persistentvolumes` or `persistentvolume`). This is a common mistake that will cause sync failures.
 
 Verify the configuration:
 ```bash
@@ -76,20 +139,10 @@ argocd proj get zabbix
 
 You should see:
 ```
-Allowed Cluster Resources:   /persistentvolumes
+Allowed Cluster Resources:   /PersistentVolume
 ```
 
-### 2.2 Add Repository to Project
-
-```bash
-argocd proj add-source zabbix git@github.com:Maborak-Technologies-Inc/helm.git
-```
-
-### 2.3 Add Destination Namespace
-
-```bash
-argocd proj add-destination zabbix https://kubernetes.default.svc automated
-```
+**Note:** If you see `/persistentvolumes` (lowercase), the configuration is incorrect and will fail. Delete and recreate with the correct case.
 
 ## Step 3: Add Repository to ArgoCD
 
@@ -278,7 +331,31 @@ kubectl delete pod <pod-name> -n automated
 
 The images will be available to the cluster after being pulled locally.
 
-### Issue 3: ArgoCD in Namespaced Mode Error
+### Issue 3: PersistentVolume Resource Not Permitted
+
+**Symptom:** Error message:
+```
+resource :PersistentVolume is not permitted in project zabbix
+```
+
+**Cause:** The ArgoCD project was configured with incorrect case for the resource kind. Kubernetes resource kinds are case-sensitive and must use PascalCase singular form.
+
+**Solution:** Fix the project configuration by removing the incorrect entry and adding the correct one:
+
+```bash
+# Remove incorrect lowercase entry (if it exists)
+argocd proj deny-cluster-resource zabbix "" persistentvolumes 2>/dev/null || true
+
+# Add correct PascalCase entry
+argocd proj allow-cluster-resource zabbix "" PersistentVolume
+
+# Verify
+argocd proj get zabbix | grep -A 2 "Allowed Cluster"
+```
+
+You should see `/PersistentVolume` (PascalCase), not `/persistentvolumes` (lowercase).
+
+### Issue 4: ArgoCD in Namespaced Mode Error
 
 **Symptom:** Error message:
 ```
@@ -301,7 +378,7 @@ kubectl patch configmap argocd-cmd-params-cm -n argocd --type json \
 kubectl rollout restart statefulset argocd-application-controller -n argocd
 ```
 
-### Issue 4: Repository Not Accessible
+### Issue 5: Repository Not Accessible
 
 **Symptom:** Error when adding repository:
 ```
@@ -392,10 +469,11 @@ ArgoCD UI is already port-forwarded on port 8080:
 ## Key Configuration Points Summary
 
 1. **ArgoCD Installation:** Must use `controller.applicationNamespaces=""` to allow cluster-scoped resources
-2. **Project Configuration:** Must explicitly allow PersistentVolumes as cluster resources
+2. **Project Configuration:** Must explicitly allow `PersistentVolume` (PascalCase singular) as cluster resource - **case-sensitive!**
 3. **SSH Keys:** Required for private repositories, must be configured as a secret
-4. **Storage Classes:** PV and PVC must have matching storage classes
+4. **Storage Classes:** PV and PVC must have matching storage classes (both use empty string `""` by default)
 5. **Image Pulls:** May need to pull images locally if cluster nodes have network issues
+6. **Resource Kind Case:** Always use PascalCase singular form for Kubernetes resource kinds in ArgoCD project configuration
 
 ## Common Commands Reference
 
@@ -429,10 +507,10 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 ## Troubleshooting Checklist
 
 - [ ] ArgoCD installed with `controller.applicationNamespaces=""`
-- [ ] Project allows PersistentVolumes as cluster resource
+- [ ] Project allows `PersistentVolume` (PascalCase) as cluster resource - verify with `argocd proj get zabbix`
 - [ ] Repository added and accessible (check `argocd repo list`)
 - [ ] Target namespace exists
-- [ ] PV and PVC have matching storage classes
+- [ ] PV and PVC have matching storage classes (check both have same `storageClassName`)
 - [ ] Images pulled locally if cluster has network issues
 - [ ] All pods in Running state
 - [ ] Application shows as Synced and Healthy in ArgoCD
@@ -443,4 +521,6 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 - PersistentVolume binding issues often stem from storage class mismatches
 - ArgoCD's namespaced mode is a security feature that restricts cluster-scoped resource management
 - Always verify the project configuration includes cluster resource permissions before syncing
+- **Critical:** Kubernetes resource kinds in ArgoCD project configuration must use PascalCase singular form (e.g., `PersistentVolume`, not `persistentvolumes` or `persistentvolume`)
+- The default `storageClassName` in `values.yaml` is set to empty string `""` to ensure PV and PVC match on all Kubernetes distributions
 
