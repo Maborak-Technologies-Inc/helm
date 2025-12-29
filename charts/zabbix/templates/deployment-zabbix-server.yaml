@@ -24,7 +24,7 @@ spec:
             secretName: {{ include "chart-name" . }}-db-secret
       initContainers:
         - name: init-config
-          image: alpine
+          image: alpine:latest
           env:
             - name: POD_NAME
               valueFrom:

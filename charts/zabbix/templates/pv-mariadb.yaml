@@ -7,6 +7,8 @@ spec:
   storageClassName: {{ .Values.storage.storageClass }}
   {{- else if (lookup "storage.k8s.io/v1" "StorageClass" "" "local-path") }}
   storageClassName: local-path
+  {{- else }}
+  storageClassName: ""
   {{- end }}
   capacity:
     storage: {{ .Values.storage.mariadb.size }}
