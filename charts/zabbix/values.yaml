@@ -1,6 +1,6 @@
 replicas:
-  zabbixServer: 1
-  zabbixUI: 1
+  zabbixServer: 3
+  zabbixUI: 5
   mariadb: 1
 
 resources:

@@ -102,28 +102,38 @@ spec:
               while true; do
                   CURRENT_MODE=$(kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.metadata.labels.mode}' 2>/dev/null || echo "standby")
                   
-                  # Read the actual Zabbix server log file (not kubectl logs which only shows supervisor)
-                  HA_LOG_MESSAGE=$(kubectl exec $POD_NAME -n $NAMESPACE -c zabbixprod-zabbix-server -- tail -500 "$LOG_FILE" 2>/dev/null | grep -iE 'node.*started in.*active.*mode|node.*switched to.*active.*mode|node.*active' | tail -1)
-
-                  if echo "$HA_LOG_MESSAGE" | grep -qiE 'node.*started in.*active.*mode|node.*switched to.*active.*mode'; then
-                      # Server log shows active mode
+                  # Read the actual Zabbix server log file to check HA mode
+                  # Look for the most recent mode message (active or standby)
+                  HA_MODE=$(kubectl exec $POD_NAME -n $NAMESPACE -c zabbixprod-zabbix-server -- tail -500 "$LOG_FILE" 2>/dev/null | grep -iE 'node.*(active|standby).*mode|node.*working in.*(active|standby).*mode|node.*switched to.*(active|standby).*mode' | tail -1)
+                  
+                  # Determine if this pod is actually active or standby based on log
+                  if echo "$HA_MODE" | grep -qiE 'node.*active.*mode|node.*working in.*active.*mode|node.*switched to.*active.*mode|node.*started in.*active.*mode'; then
+                      # Log shows this pod is in active mode
                       if [ "$CURRENT_MODE" != "active" ]; then
-                          echo "Setting $POD_NAME to active mode (detected from log: $HA_LOG_MESSAGE)."
+                          echo "Setting $POD_NAME to active mode (detected from log: $HA_MODE)."
                           kubectl label pod $POD_NAME -n $NAMESPACE mode=active --overwrite
                       fi
-                  # If no explicit active message but server is healthy, check for other active servers
-                  elif [ "$CURRENT_MODE" != "active" ]; then
-                      # Count other active server pods
+                  elif echo "$HA_MODE" | grep -qiE 'node.*standby.*mode|node.*working in.*standby.*mode'; then
+                      # Log shows this pod is in standby mode
+                      if [ "$CURRENT_MODE" != "standby" ]; then
+                          echo "Setting $POD_NAME to standby mode (detected from log: $HA_MODE)."
+                          kubectl label pod $POD_NAME -n $NAMESPACE mode=standby --overwrite
+                      fi
+                  else
+                      # No clear mode message in log yet, use fallback logic
+                      # Check if there are other pods with active labels
                       OTHER_ACTIVE=$(kubectl get pods -n $NAMESPACE -l app=zabbixprod-server,mode=active --field-selector metadata.name!=$POD_NAME --no-headers 2>/dev/null | wc -l)
                       
                       if [ "$OTHER_ACTIVE" -eq 0 ]; then
-                          # No other active servers, this one should be active if healthy
-                          echo "Setting $POD_NAME to active mode (single-node or no other active servers)."
-                          kubectl label pod $POD_NAME -n $NAMESPACE mode=active --overwrite
+                          # No other active servers, default to active (single-node scenario)
+                          if [ "$CURRENT_MODE" != "active" ]; then
+                              echo "Setting $POD_NAME to active mode (no other active servers found, fallback)."
+                              kubectl label pod $POD_NAME -n $NAMESPACE mode=active --overwrite
+                          fi
                       else
-                          # Other active servers exist, stay in standby
+                          # Other active servers exist, default to standby
                           if [ "$CURRENT_MODE" != "standby" ]; then
-                              echo "Setting $POD_NAME to standby mode (other active servers exist)."
+                              echo "Setting $POD_NAME to standby mode (other active servers exist, fallback)."
                               kubectl label pod $POD_NAME -n $NAMESPACE mode=standby --overwrite
                           fi
                       fi
