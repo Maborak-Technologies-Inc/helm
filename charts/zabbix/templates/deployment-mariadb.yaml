@@ -14,12 +14,13 @@ spec:
       {{- if .Values.images.mariadb.buildDate }}
       annotations:
         image.buildDate: {{ .Values.images.mariadb.buildDate | quote }}
-        image: {{ printf "%s:%s" .Values.images.mariadb.repository .Values.images.mariadb.tag | quote }}
+        {{- $tag := .Values.images.mariadb.tag | default .Chart.AppVersion }}
+        image: {{ printf "%s:%s" .Values.images.mariadb.repository $tag | quote }}
       {{- end }}
     spec:
       containers:
         - name: {{ include "chart-name" . }}-mariadb
-          image: "{{ .Values.images.mariadb.repository }}:{{ .Values.images.mariadb.tag }}"
+          image: "{{ .Values.images.mariadb.repository }}:{{ default .Chart.AppVersion .Values.images.mariadb.tag }}"
           imagePullPolicy: {{ .Values.images.mariadb.pullPolicy }}
           env:
             - name: MARIADB_ROOT_PASSWORD

@@ -14,7 +14,8 @@ spec:
       {{- if .Values.images.zabbixServer.buildDate }}
       annotations:
         image.buildDate: {{ .Values.images.zabbixServer.buildDate | quote }}
-        image: {{ printf "%s:%s" .Values.images.zabbixServer.repository .Values.images.zabbixServer.tag | quote }}
+        {{- $tag := .Values.images.zabbixServer.tag | default .Chart.AppVersion }}
+        image: {{ printf "%s:%s" .Values.images.zabbixServer.repository $tag | quote }}
       {{- end }}
     spec:
       serviceAccountName: {{ include "chart-name" . }}-kubectl-executor  # Use Helm templating for SA
@@ -53,7 +54,7 @@ spec:
               readOnly: true
       containers:
         - name: {{ include "chart-name" . }}-zabbix-server
-          image: "{{ .Values.images.zabbixServer.repository }}:{{ .Values.images.zabbixServer.tag }}"
+          image: "{{ .Values.images.zabbixServer.repository }}:{{ default .Chart.AppVersion .Values.images.zabbixServer.tag }}"
           imagePullPolicy: {{ .Values.images.zabbixServer.pullPolicy }}
           env:
             - name: MARIADB_PASSWORD

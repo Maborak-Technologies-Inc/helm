@@ -21,7 +21,8 @@ spec:
       {{- if .Values.images.zabbixUI.buildDate }}
       annotations:
         image.buildDate: {{ .Values.images.zabbixUI.buildDate | quote }}
-        image: {{ printf "%s:%s" .Values.images.zabbixUI.repository .Values.images.zabbixUI.tag | quote }}
+        {{- $tag := .Values.images.zabbixUI.tag | default .Chart.AppVersion }}
+        image: {{ printf "%s:%s" .Values.images.zabbixUI.repository $tag | quote }}
       {{- end }}
     spec:
       initContainers:
@@ -47,7 +48,7 @@ spec:
               readOnly: true
       containers:
         - name: {{ include "chart-name" . }}-zabbix-ui
-          image: "{{ .Values.images.zabbixUI.repository }}:{{ .Values.images.zabbixUI.tag }}"
+          image: "{{ .Values.images.zabbixUI.repository }}:{{ default .Chart.AppVersion .Values.images.zabbixUI.tag }}"
           imagePullPolicy: {{ .Values.images.zabbixUI.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: true

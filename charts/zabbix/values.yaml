@@ -49,17 +49,17 @@ secrets:
 images:
   zabbixServer:
     repository: maborak/zabbix-server
-    tag: "latest"
+    tag: ""  # Empty = use Chart.AppVersion, or set to override (e.g., "latest", "7.2.2")
     pullPolicy: Always
     buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
   zabbixUI:
     repository: maborak/zabbix-ui
-    tag: "latest"
+    tag: ""  # Empty = use Chart.AppVersion, or set to override (e.g., "latest", "7.2.2")
     pullPolicy: Always
     buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
   mariadb:
     repository: maborak/zabbix-db
-    tag: "latest"
+    tag: ""  # Empty = use Chart.AppVersion, or set to override (e.g., "latest", "7.2.2")
     pullPolicy: Always
     buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
 
