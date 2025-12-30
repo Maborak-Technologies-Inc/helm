@@ -181,14 +181,17 @@ install_zabbix() {
         fi
     fi
     
-    # Create application with upsert flag to handle any remaining edge cases
-    print_info "Creating ArgoCD application..."
+    # Create application with auto-sync enabled
+    print_info "Creating ArgoCD application with auto-sync enabled..."
     if ! argocd app create ${APP_NAME} \
         --repo ${REPO_URL} \
         --path ${CHART_PATH} \
         --dest-name in-cluster \
         --dest-namespace ${NAMESPACE} \
         --project ${PROJECT_NAME} \
+        --sync-policy automated \
+        --self-heal \
+        --auto-prune \
         --upsert 2>/dev/null; then
         # If upsert doesn't work, try without it (for older ArgoCD versions)
         print_info "Trying without upsert flag..."
@@ -197,11 +200,14 @@ install_zabbix() {
             --path ${CHART_PATH} \
             --dest-name in-cluster \
             --dest-namespace ${NAMESPACE} \
-            --project ${PROJECT_NAME}
+            --project ${PROJECT_NAME} \
+            --sync-policy automated \
+            --self-heal \
+            --auto-prune
     fi
     
-    # Step 5: Sync application
-    print_info "Syncing application..."
+    # Step 5: Initial sync (auto-sync will handle future changes)
+    print_info "Performing initial sync..."
     argocd app sync ${APP_NAME}
     
     # Step 6: Wait for pods to be ready
