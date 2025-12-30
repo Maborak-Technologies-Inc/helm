@@ -18,6 +18,11 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: ui
+      {{- if .Values.images.zabbixUI.buildDate }}
+      annotations:
+        image.buildDate: {{ .Values.images.zabbixUI.buildDate | quote }}
+        image: {{ printf "%s:%s" .Values.images.zabbixUI.repository .Values.images.zabbixUI.tag | quote }}
+      {{- end }}
     spec:
       initContainers:
         - name: init-config

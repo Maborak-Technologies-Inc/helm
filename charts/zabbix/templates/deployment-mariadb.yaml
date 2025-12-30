@@ -11,6 +11,11 @@ spec:
     metadata:
       labels:
         app: {{ include "chart-name" . }}-mariadb
+      {{- if .Values.images.mariadb.buildDate }}
+      annotations:
+        image.buildDate: {{ .Values.images.mariadb.buildDate | quote }}
+        image: {{ printf "%s:%s" .Values.images.mariadb.repository .Values.images.mariadb.tag | quote }}
+      {{- end }}
     spec:
       containers:
         - name: {{ include "chart-name" . }}-mariadb

@@ -11,6 +11,11 @@ spec:
     metadata:
       labels:
         app: {{ include "chart-name" . }}-server
+      {{- if .Values.images.zabbixServer.buildDate }}
+      annotations:
+        image.buildDate: {{ .Values.images.zabbixServer.buildDate | quote }}
+        image: {{ printf "%s:%s" .Values.images.zabbixServer.repository .Values.images.zabbixServer.tag | quote }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "chart-name" . }}-kubectl-executor  # Use Helm templating for SA
       volumes:

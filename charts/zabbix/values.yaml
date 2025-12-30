@@ -51,14 +51,17 @@ images:
     repository: maborak/zabbix-server
     tag: "latest"
     pullPolicy: Always
+    buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
   zabbixUI:
     repository: maborak/zabbix-ui
     tag: "latest"
     pullPolicy: Always
+    buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
   mariadb:
     repository: maborak/zabbix-db
     tag: "latest"
     pullPolicy: Always
+    buildDate: "2025-12-30T03:45:34Z"  # Match org.opencontainers.image.created from image
 
 healthChecks:
   zabbixServer:
