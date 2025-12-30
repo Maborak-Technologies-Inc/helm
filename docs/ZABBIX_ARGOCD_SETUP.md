@@ -339,7 +339,7 @@ kubectl create namespace automated
 
 **Important:** Before creating the application, ensure your Helm chart's PV and PVC templates use the same `storageClassName`. If your chart has a mismatch, fix it in the chart templates (see Issue 1 in Troubleshooting) or use Helm values to override.
 
-Create the ArgoCD application:
+Create the ArgoCD application with auto-sync enabled:
 
 ```bash
 argocd app create prod \
@@ -347,8 +347,16 @@ argocd app create prod \
   --path charts/zabbix \
   --dest-name in-cluster \
   --dest-namespace automated \
-  --project zabbix
+  --project zabbix \
+  --sync-policy automated \
+  --self-heal \
+  --auto-prune
 ```
+
+**Auto-sync features:**
+- `--sync-policy automated`: Automatically syncs when Git changes are detected
+- `--self-heal`: Automatically corrects drift (reverts manual changes)
+- `--auto-prune`: Automatically removes resources deleted from Git
 
 **Alternative:** If you need to override Helm values (e.g., to set storageClassName), you can create the application with a values file or use the `--helm-set` flag:
 
