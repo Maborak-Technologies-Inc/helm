@@ -5,12 +5,14 @@ This guide documents the complete process of setting up Zabbix using ArgoCD, inc
 ## Prerequisites
 
 - Kubernetes cluster (tested with Docker Desktop Kubernetes)
-- Helm installed
-- ArgoCD CLI installed (`argocd` command)
-- SSH key for accessing private GitHub repositories
+- Helm installed (see Part 1 below)
+- ArgoCD CLI installed (see Part 1 below)
+- SSH key for accessing private GitHub repositories (located at `~/.ssh/id_rsa_argocd`)
 - Docker installed (for pulling images locally if needed)
 
-## Installing Helm
+---
+
+## Part 1: Helm Setup
 
 Helm is a package manager for Kubernetes that is required to install ArgoCD. Follow the instructions below for your operating system.
 
@@ -70,7 +72,7 @@ scoop install helm
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-### Verify Installation
+### Verify Helm Installation
 
 After installation, verify Helm is working correctly:
 
@@ -83,11 +85,15 @@ You should see output similar to:
 version.BuildInfo{Version:"v3.x.x", GitCommit:"...", GitTreeState:"...", GoVersion:"..."}
 ```
 
-## Installing ArgoCD CLI
+---
+
+## Part 2: ArgoCD Setup
+
+### 2.1 Install ArgoCD CLI
 
 The ArgoCD CLI (`argocd`) is required to interact with ArgoCD and manage applications. Follow the instructions below for your operating system.
 
-### Linux / WSL
+#### Linux / WSL
 
 **Using the official install script (recommended):**
 
@@ -115,7 +121,7 @@ curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/
 chmod +x /usr/local/bin/argocd
 ```
 
-### macOS
+#### macOS
 
 **Using Homebrew (recommended):**
 
@@ -137,7 +143,7 @@ curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/
 chmod +x /usr/local/bin/argocd
 ```
 
-### Windows
+#### Windows
 
 **Using Chocolatey:**
 
@@ -157,7 +163,7 @@ scoop install argocd
 2. Extract `argocd-windows-amd64.exe` and rename it to `argocd.exe`
 3. Add it to your PATH or place it in a directory that's already in your PATH
 
-### Verify Installation
+#### Verify ArgoCD CLI Installation
 
 After installation, verify the ArgoCD CLI is working correctly:
 
@@ -176,9 +182,9 @@ argocd: v2.x.x+xxxxxxx
   Platform: linux/amd64
 ```
 
-## Step 1: Install ArgoCD
+### 2.2 Install ArgoCD Server
 
-### 1.1 Add ArgoCD Helm Repository
+#### 2.2.1 Add ArgoCD Helm Repository
 
 Before installing ArgoCD, add the ArgoCD Helm repository:
 
@@ -187,13 +193,13 @@ helm repo add argo https://argoproj.github.io/argo-helm
 helm repo update
 ```
 
-### 1.2 Create Namespace
+#### 2.2.2 Create Namespace
 
 ```bash
 kubectl create namespace argocd
 ```
 
-### 1.3 Install ArgoCD with Proper Configuration
+#### 2.2.3 Install ArgoCD with Proper Configuration
 
 **Important:** ArgoCD must be installed with `controller.applicationNamespaces=""` to allow cluster-scoped resources like PersistentVolumes.
 
@@ -205,13 +211,13 @@ helm install argocd argo/argo-cd -n argocd \
 
 **Why this matters:** Without this setting, ArgoCD runs in "namespaced mode" and cannot manage cluster-scoped resources like PersistentVolumes, which Zabbix requires.
 
-### 1.4 Wait for ArgoCD to be Ready
+#### 2.2.4 Wait for ArgoCD to be Ready
 
 ```bash
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
 ```
 
-### 1.5 Set Up Access to ArgoCD Server
+### 2.3 Set Up Access to ArgoCD Server
 
 You have two options to access the ArgoCD server:
 
@@ -221,7 +227,7 @@ You have two options to access the ArgoCD server:
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-Keep this terminal session running. In another terminal, proceed to Step 1.6.
+Keep this terminal session running. In another terminal, proceed to Step 2.4.
 
 **Option 2: Using argocd proxy (Alternative method)**
 
@@ -236,15 +242,15 @@ This command will:
 - Create a local proxy on port 8080
 - Run in the foreground (keep this terminal session running)
 
-Keep this terminal session running. In another terminal, proceed to Step 1.6 to login.
+Keep this terminal session running. In another terminal, proceed to Step 2.4 to login.
 
-**Note:** `argocd proxy` uses your kubeconfig to connect to the cluster, so it doesn't require prior login. However, you still need to login (Step 1.6) to use ArgoCD CLI commands. After the first login, you can use `argocd proxy` for future sessions instead of port-forwarding.
+**Note:** `argocd proxy` uses your kubeconfig to connect to the cluster, so it doesn't require prior login. However, you still need to login (Step 2.4) to use ArgoCD CLI commands. After the first login, you can use `argocd proxy` for future sessions instead of port-forwarding.
 
-### 1.6 Get Admin Password and Login
+### 2.4 Get Admin Password and Login
 
 **Method 1: Login through localhost (port-forward or proxy)**
 
-If you're using port-forward (Option 1) or `argocd proxy` (Option 2) from Step 1.5:
+If you're using port-forward (Option 1) or `argocd proxy` (Option 2) from Step 2.3:
 
 ```bash
 # Get the initial admin password
@@ -268,7 +274,7 @@ argocd login argocd-server.argocd.svc.cluster.local --name argocd --username adm
 
 **Note:** After successful login, you can use `argocd proxy` for future sessions instead of port-forwarding. The proxy will use your saved credentials.
 
-## Step 2: Create and Configure ArgoCD Project
+### 2.5 Create and Configure ArgoCD Project
 
 Create the project and immediately configure it to allow cluster-scoped resources (PersistentVolumes):
 
@@ -299,19 +305,19 @@ Allowed Cluster Resources:   /PersistentVolume
 
 **Note:** The command requires PascalCase and **singular** form (`PersistentVolume`), not plural (`PersistentVolumes`) or lowercase (`persistentvolumes`). The output will show the resource in the format it was added.
 
-### 2.2 Add Repository to Project
+#### 2.5.1 Add Repository to Project
 
 ```bash
 argocd proj add-source zabbix git@github.com:Maborak-Technologies-Inc/helm.git
 ```
 
-### 2.3 Add Destination Namespace
+#### 2.5.2 Add Destination Namespace
 
 ```bash
 argocd proj add-destination zabbix https://kubernetes.default.svc automated
 ```
 
-## Step 3: Add Repository to ArgoCD
+### 2.6 Add Repository to ArgoCD
 
 Add the private GitHub repository with SSH key:
 
@@ -329,15 +335,91 @@ argocd repo list
 
 You should see the repository with status "Successful".
 
-## Step 4: Create Target Namespace
+---
+
+## Part 3: Zabbix Installation
+
+Once Helm and ArgoCD are set up and running, you can install Zabbix using either the automated script or manual commands.
+
+### 3.1 Automated Installation (Recommended)
+
+The easiest way to install Zabbix with ArgoCD is using the provided automation script:
+
+#### Using the Automation Script
+
+```bash
+# Install with default values (app: prod, namespace: automated, project: zabbix)
+./docs/zabbix-argocd.sh install
+
+# Install with custom app name
+./docs/zabbix-argocd.sh install --app staging
+
+# Install with custom app name (alternative syntax with equals sign)
+./docs/zabbix-argocd.sh install --app=staging
+
+# Force recreate existing app/project
+./docs/zabbix-argocd.sh install --app prod --force
+
+# Override multiple defaults
+./docs/zabbix-argocd.sh install \
+  --app=production \
+  --namespace=prod \
+  --project=zabbix-prod \
+  --repo=git@github.com:your-org/helm.git
+```
+
+**Script Features:**
+- ✅ Automatic ArgoCD project setup
+- ✅ Repository configuration
+- ✅ Application creation with auto-sync enabled (automated, self-heal, auto-prune)
+- ✅ Safety checks (won't delete existing resources without `--force`)
+- ✅ Support for both `--flag value` and `--flag=value` syntax
+- ✅ Default values for common settings
+
+**Default Values:**
+- App Name: `prod`
+- Namespace: `automated`
+- Project: `zabbix`
+- Repository: `git@github.com:Maborak-Technologies-Inc/helm.git`
+- Chart Path: `charts/zabbix`
+- SSH Key: `~/.ssh/id_rsa_argocd`
+
+**Important Notes:**
+- The script will **not** delete existing apps/projects unless you use `--force`
+- Port-forward commands are **not** started automatically - you'll need to run them manually (instructions shown at the end)
+- Uninstall requires `--force` flag for safety: `./docs/zabbix-argocd.sh uninstall --force`
+- Applications are created with auto-sync enabled by default
+
+**Script Options:**
+
+All options support both `--flag value` and `--flag=value` syntax:
+
+- `--app NAME` - ArgoCD application name (default: `prod`)
+- `--namespace NAME` - Target Kubernetes namespace (default: `automated`)
+- `--project NAME` - ArgoCD project name (default: `zabbix`)
+- `--repo URL` - Git repository URL (default: `git@github.com:Maborak-Technologies-Inc/helm.git`)
+- `--chart-path PATH` - Helm chart path in repository (default: `charts/zabbix`)
+- `--ssh-key PATH` - SSH key path for private repos (default: `~/.ssh/id_rsa_argocd`)
+- `--force` - Delete and recreate existing resources (apps, projects)
+
+**Note:** The script automatically enables auto-sync when creating applications:
+- `--sync-policy automated` - Auto-syncs when Git changes are detected
+- `--self-heal` - Automatically corrects drift
+- `--auto-prune` - Automatically removes deleted resources
+
+### 3.2 Manual Installation
+
+For experienced users who prefer manual setup, follow these steps:
+
+#### 3.2.1 Create Target Namespace
 
 ```bash
 kubectl create namespace automated
 ```
 
-## Step 5: Create ArgoCD Application
+#### 3.2.2 Create ArgoCD Application
 
-**Important:** Before creating the application, ensure your Helm chart's PV and PVC templates use the same `storageClassName`. If your chart has a mismatch, fix it in the chart templates (see Issue 1 in Troubleshooting) or use Helm values to override.
+**Important:** Before creating the application, ensure your Helm chart's PV and PVC templates use the same `storageClassName`. If your chart has a mismatch, fix it in the chart templates (see Troubleshooting) or use Helm values to override.
 
 Create the ArgoCD application with auto-sync enabled:
 
@@ -358,16 +440,19 @@ argocd app create prod \
 - `--self-heal`: Automatically corrects drift (reverts manual changes)
 - `--auto-prune`: Automatically removes resources deleted from Git
 
-**Alternative:** If you need to override Helm values (e.g., to set storageClassName), you can create the application with a values file or use the `--helm-set` flag:
+**Alternative:** If you need to override Helm values (e.g., to set storageClassName), you can create the application with a values file or use the `--helm-set` flag (with auto-sync):
 
 ```bash
-# Using Helm values file
+# Using Helm values file with auto-sync
 argocd app create prod \
   --repo git@github.com:Maborak-Technologies-Inc/helm.git \
   --path charts/zabbix \
   --dest-name in-cluster \
   --dest-namespace automated \
   --project zabbix \
+  --sync-policy automated \
+  --self-heal \
+  --auto-prune \
   --helm-set storage.mariadb.storageClassName=standard
 
 # Or create a values file and reference it
@@ -377,16 +462,157 @@ argocd app create prod \
   --dest-name in-cluster \
   --dest-namespace automated \
   --project zabbix \
+  --sync-policy automated \
+  --self-heal \
+  --auto-prune \
   --values values-override.yaml
 ```
 
-## Step 6: Sync Application
+#### 3.2.3 Initial Sync
 
 ```bash
 argocd app sync prod
 ```
 
-## Step 7: Troubleshooting Common Issues
+**Note:** If auto-sync is enabled, this initial sync is the only manual sync needed. Future Git changes will be automatically synced.
+
+---
+
+## Part 4: Access and Verification
+
+### 4.1 Verify Deployment
+
+#### Check Application Status
+
+```bash
+argocd app get prod
+```
+
+Expected output:
+- Sync Status: `Synced`
+- Health Status: `Healthy` (or `Progressing` during initial deployment)
+
+#### Check Pods
+
+```bash
+kubectl get pods -n automated
+```
+
+All pods should show `Running` and `READY`:
+```
+NAME                                  READY   STATUS    RESTARTS   AGE
+zabbixprod-mariadb-xxx               1/1     Running   0          Xm
+zabbixprod-server-xxx                2/2     Running   0          Xm
+zabbixprod-ui-xxx                    1/1     Running   0          Xm
+```
+
+#### Check Deployments
+
+```bash
+kubectl get deployments -n automated
+```
+
+All should show `1/1` Ready:
+```
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+zabbixprod-mariadb   1/1     1            1           Xm
+zabbixprod-server    1/1     1            1           Xm
+zabbixprod-ui        1/1     1            1           Xm
+```
+
+### 4.2 Access Zabbix UI
+
+**Note:** If you used the automation script (`zabbix-argocd.sh`), access instructions are displayed at the end of the installation. The script does not automatically start port-forwards - you need to run them manually.
+
+#### Option 1: Using kubectl proxy (Recommended - single command for all services)
+
+```bash
+# Start kubectl proxy in a separate terminal
+kubectl proxy
+```
+
+Then access services via the proxy:
+
+**Zabbix UI:**
+- For app named "prod": `http://localhost:8001/api/v1/namespaces/automated/services/zabbixprod-ui:80/proxy/`
+- For app named "staging": `http://localhost:8001/api/v1/namespaces/automated/services/zabbixstaging-ui:80/proxy/`
+- For custom app name: `http://localhost:8001/api/v1/namespaces/<NAMESPACE>/services/zabbix<APP_NAME>-ui:80/proxy/`
+
+**ArgoCD UI (via the same proxy):**
+- `http://localhost:8001/api/v1/namespaces/argocd/services/argocd-server:443/proxy/`
+
+**Important:** Keep the `kubectl proxy` command running in a separate terminal. Press Ctrl+C to stop it.
+
+#### Option 2: Port Forward (Direct access)
+
+```bash
+# For app named "prod" (default)
+kubectl port-forward svc/zabbixprod-ui -n automated 8081:80
+
+# For app named "staging"
+kubectl port-forward svc/zabbixstaging-ui -n automated 8081:80
+
+# For custom app name, use: zabbix<APP_NAME>-ui
+kubectl port-forward svc/zabbix<APP_NAME>-ui -n <NAMESPACE> 8081:80
+```
+
+Then access: `http://localhost:8081`
+
+**Important:** Keep the port-forward command running in a separate terminal. Press Ctrl+C to stop it.
+
+#### Option 3: NodePort (if service is NodePort)
+
+```bash
+kubectl get svc zabbixprod-ui -n automated
+# Use the NodePort number with any node IP
+```
+
+#### Option 4: LoadBalancer (if service is LoadBalancer)
+
+```bash
+kubectl get svc zabbixprod-ui -n automated
+# Use the EXTERNAL-IP
+```
+
+#### Default Credentials
+
+- Username: `Admin` (case-sensitive)
+- Password: `zabbix`
+
+(Check your Helm values or ConfigMap for custom credentials)
+
+### 4.3 Access ArgoCD UI
+
+The ArgoCD UI is accessible through the connection method you set up in Part 2.3:
+
+**If using port-forward or argocd proxy:**
+
+- URL: `https://localhost:8080`
+- Username: `admin`
+- Password: (from Part 2.4)
+
+**Note:** Make sure the port-forward or `argocd proxy` is still running in a terminal session. If you closed it, restart it using the commands from Part 2.3.
+
+**If using LoadBalancer service type:**
+
+```bash
+kubectl get svc argocd-server -n argocd
+# Use the EXTERNAL-IP to access the UI
+```
+
+- URL: `https://<EXTERNAL-IP>`
+- Username: `admin`
+- Password: (from Part 2.4)
+
+**If using kubectl proxy:**
+
+- URL: `http://localhost:8001/api/v1/namespaces/argocd/services/argocd-server:443/proxy/`
+- Username: `admin`
+- Password: (from Part 2.4)
+
+---
+
+## Part 5: Troubleshooting
 
 ### Issue 1: PersistentVolume Not Binding
 
@@ -460,6 +686,9 @@ argocd app create prod \
   --dest-name in-cluster \
   --dest-namespace automated \
   --project zabbix \
+  --sync-policy automated \
+  --self-heal \
+  --auto-prune \
   --helm-set storage.storageClass=standard
 ```
 
@@ -515,7 +744,7 @@ cluster level PersistentVolume "zabbixprod-mariadb-pv" can not be managed when i
 
 **Cause:** ArgoCD was installed without proper configuration for cluster-scoped resources.
 
-**Solution:** Reinstall ArgoCD with the correct configuration (see Step 1.3), or ensure the ConfigMap doesn't have `application.namespaces` set:
+**Solution:** Reinstall ArgoCD with the correct configuration (see Part 2.2.3), or ensure the ConfigMap doesn't have `application.namespaces` set:
 
 ```bash
 # Check if the key exists
@@ -536,117 +765,38 @@ kubectl rollout restart statefulset argocd-application-controller -n argocd
 SSH agent requested but SSH_AUTH_SOCK not-specified
 ```
 
-**Solution:** Use the `--ssh-private-key-path` flag when adding the repository (see Step 3).
+**Solution:** Use the `--ssh-private-key-path` flag when adding the repository (see Part 2.6).
 
-## Step 8: Verify Deployment
+### Issue 5: PersistentVolume Resource Not Permitted
 
-### Check Application Status
+**Symptom:** Error message:
+```
+resource :PersistentVolume is not permitted in project zabbix
+```
+
+**Cause:** The ArgoCD project was configured to allow `persistentvolumes` (lowercase) instead of `PersistentVolume` (PascalCase). Kubernetes resource kinds are case-sensitive.
+
+**Solution:** Remove the incorrect entry and add the correct one:
 
 ```bash
-argocd app get prod
+# Remove incorrect entry (if exists)
+argocd proj remove-cluster-resource zabbix "" persistentvolumes
+
+# Add correct entry (PascalCase singular)
+argocd proj allow-cluster-resource zabbix "" PersistentVolume
 ```
 
-Expected output:
-- Sync Status: `Synced`
-- Health Status: `Healthy` (or `Progressing` during initial deployment)
+**Important:** The resource name must be in PascalCase and **singular** (`PersistentVolume`), not plural (`PersistentVolumes`) or lowercase (`persistentvolumes`).
 
-### Check Pods
+---
 
-```bash
-kubectl get pods -n automated
-```
-
-All pods should show `Running` and `READY`:
-```
-NAME                                  READY   STATUS    RESTARTS   AGE
-zabbixprod-mariadb-xxx               1/1     Running   0          Xm
-zabbixprod-server-xxx                2/2     Running   0          Xm
-zabbixprod-ui-xxx                    1/1     Running   0          Xm
-```
-
-### Check Deployments
-
-```bash
-kubectl get deployments -n automated
-```
-
-All should show `1/1` Ready:
-```
-NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
-zabbixprod-mariadb   1/1     1            1           Xm
-zabbixprod-server    1/1     1            1           Xm
-zabbixprod-ui        1/1     1            1           Xm
-```
-
-## Step 9: Access Zabbix UI
-
-### Option 1: Port Forward (Recommended)
-
-```bash
-kubectl port-forward svc/zabbixprod-ui -n automated 8081:80
-```
-
-Then access: `http://localhost:8081`
-
-### Option 2: NodePort (if service is NodePort)
-
-```bash
-kubectl get svc zabbixprod-ui -n automated
-# Use the NodePort number with any node IP
-```
-
-### Option 3: LoadBalancer (if service is LoadBalancer)
-
-```bash
-kubectl get svc zabbixprod-ui -n automated
-# Use the EXTERNAL-IP
-```
-
-### Default Credentials
-
-- Username: `Admin` (case-sensitive)
-- Password: `zabbix`
-
-(Check your Helm values or ConfigMap for custom credentials)
-
-## Step 10: Access ArgoCD UI
-
-The ArgoCD UI is accessible through the connection method you set up in Step 1.5:
-
-**If using port-forward or argocd proxy:**
-
-- URL: `https://localhost:8080`
-- Username: `admin`
-- Password: (from Step 1.6)
-
-**Note:** Make sure the port-forward or `argocd proxy` is still running in a terminal session. If you closed it, restart it using the commands from Step 1.5.
-
-**If using LoadBalancer service type:**
-
-```bash
-kubectl get svc argocd-server -n argocd
-# Use the EXTERNAL-IP to access the UI
-```
-
-- URL: `https://<EXTERNAL-IP>`
-- Username: `admin`
-- Password: (from Step 1.6)
-
-## Key Configuration Points Summary
-
-1. **ArgoCD Installation:** Must use `controller.applicationNamespaces=""` to allow cluster-scoped resources
-2. **Project Configuration:** Must explicitly allow PersistentVolumes as cluster resources
-3. **SSH Keys:** Required for private repositories, must be configured as a secret
-4. **Storage Classes:** PV and PVC must have matching storage classes
-5. **Image Pulls:** May need to pull images locally if cluster nodes have network issues
-
-## Common Commands Reference
+## Part 6: Common Commands Reference
 
 ```bash
 # Check ArgoCD application status
 argocd app get prod
 
-# Sync application
+# Sync application (if auto-sync is not enabled)
 argocd app sync prod
 
 # Check pods
@@ -662,23 +812,45 @@ kubectl get pvc -n automated
 # View ArgoCD logs
 kubectl logs -n argocd argocd-application-controller-0
 
-# Port forward Zabbix UI
+# Using kubectl proxy (single command for all services)
+kubectl proxy
+# Then access: http://localhost:8001/api/v1/namespaces/automated/services/zabbixprod-ui:80/proxy/
+
+# Port forward Zabbix UI (direct access)
 kubectl port-forward svc/zabbixprod-ui -n automated 8081:80
 
 # Port forward ArgoCD UI
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-## Troubleshooting Checklist
+---
 
+## Part 7: Troubleshooting Checklist
+
+- [ ] Helm installed and verified
+- [ ] ArgoCD CLI installed and verified
 - [ ] ArgoCD installed with `controller.applicationNamespaces=""`
-- [ ] Project allows PersistentVolumes as cluster resource
+- [ ] Project allows `PersistentVolume` (PascalCase) as cluster resource - verify with `argocd proj get zabbix`
 - [ ] Repository added and accessible (check `argocd repo list`)
 - [ ] Target namespace exists
-- [ ] PV and PVC have matching storage classes
+- [ ] PV and PVC have matching storage classes (check both have same `storageClassName`)
 - [ ] Images pulled locally if cluster has network issues
 - [ ] All pods in Running state
 - [ ] Application shows as Synced and Healthy in ArgoCD
+
+---
+
+## Part 8: Key Configuration Points Summary
+
+1. **ArgoCD Installation:** Must use `controller.applicationNamespaces=""` to allow cluster-scoped resources
+2. **Project Configuration:** Must explicitly allow `PersistentVolume` (PascalCase singular) as cluster resource - **case-sensitive!**
+3. **SSH Keys:** Required for private repositories, must be configured as a secret
+4. **Storage Classes:** PV and PVC must have matching storage classes (both use empty string `""` by default)
+5. **Image Pulls:** May need to pull images locally if cluster nodes have network issues
+6. **Resource Kind Case:** Always use PascalCase singular form for Kubernetes resource kinds in ArgoCD project configuration
+7. **Auto-Sync:** Applications are created with auto-sync enabled by default (automated, self-heal, auto-prune)
+
+---
 
 ## Notes
 
@@ -686,4 +858,6 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 - PersistentVolume binding issues often stem from storage class mismatches
 - ArgoCD's namespaced mode is a security feature that restricts cluster-scoped resource management
 - Always verify the project configuration includes cluster resource permissions before syncing
-
+- **Critical:** Kubernetes resource kinds in ArgoCD project configuration must use PascalCase singular form (e.g., `PersistentVolume`, not `persistentvolumes` or `persistentvolume`)
+- The default `storageClassName` in `values.yaml` is set to empty string `""` to ensure PV and PVC match on all Kubernetes distributions
+- With auto-sync enabled, Git changes are automatically applied - no manual sync needed
