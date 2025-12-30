@@ -10,9 +10,57 @@ This guide documents the complete process of setting up Zabbix using ArgoCD, inc
 - SSH key for accessing private GitHub repositories (located at `~/.ssh/id_rsa_argocd`)
 - Docker installed (for pulling images locally if needed)
 
-## Quick Start (Complete Setup Script)
+## Quick Start (Automated Script)
 
-For experienced users, here's the complete setup in one script:
+The easiest way to install Zabbix with ArgoCD is using the provided automation script:
+
+### Using the Automation Script
+
+```bash
+# Install with default values (app: prod, namespace: automated, project: zabbix)
+./docs/zabbix-argocd.sh install
+
+# Install with custom app name
+./docs/zabbix-argocd.sh install --app staging
+
+# Install with custom app name (alternative syntax with equals sign)
+./docs/zabbix-argocd.sh install --app=staging
+
+# Force recreate existing app/project
+./docs/zabbix-argocd.sh install --app prod --force
+
+# Override multiple defaults
+./docs/zabbix-argocd.sh install \
+  --app=production \
+  --namespace=prod \
+  --project=zabbix-prod \
+  --repo=git@github.com:your-org/helm.git
+```
+
+**Script Features:**
+- ✅ Automatic ArgoCD project setup
+- ✅ Repository configuration
+- ✅ Application creation and sync
+- ✅ Safety checks (won't delete existing resources without `--force`)
+- ✅ Support for both `--flag value` and `--flag=value` syntax
+- ✅ Default values for common settings
+
+**Default Values:**
+- App Name: `prod`
+- Namespace: `automated`
+- Project: `zabbix`
+- Repository: `git@github.com:Maborak-Technologies-Inc/helm.git`
+- Chart Path: `charts/zabbix`
+- SSH Key: `~/.ssh/id_rsa_argocd`
+
+**Important Notes:**
+- The script will **not** delete existing apps/projects unless you use `--force`
+- Port-forward commands are **not** started automatically - you'll need to run them manually (instructions shown at the end)
+- Uninstall requires `--force` flag for safety: `./docs/zabbix-argocd.sh uninstall --force`
+
+### Manual Setup (Alternative)
+
+For experienced users who prefer manual setup, here's the complete process:
 
 ```bash
 # Step 1: Install ArgoCD
@@ -431,11 +479,22 @@ zabbixprod-ui        1/1     1            1           Xm
 
 ### Option 1: Port Forward (Recommended)
 
+**Note:** If you used the automation script (`zabbix-argocd.sh`), port-forward instructions are displayed at the end of the installation. The script does not automatically start port-forwards - you need to run them manually.
+
 ```bash
+# For app named "prod" (default)
 kubectl port-forward svc/zabbixprod-ui -n automated 8081:80
+
+# For app named "staging"
+kubectl port-forward svc/zabbixstaging-ui -n automated 8081:80
+
+# For custom app name, use: zabbix<APP_NAME>-ui
+kubectl port-forward svc/zabbix<APP_NAME>-ui -n <NAMESPACE> 8081:80
 ```
 
 Then access: `http://localhost:8081`
+
+**Important:** Keep the port-forward command running in a separate terminal. Press Ctrl+C to stop it.
 
 ### Option 2: NodePort (if service is NodePort)
 
@@ -474,6 +533,80 @@ ArgoCD UI is already port-forwarded on port 8080:
 4. **Storage Classes:** PV and PVC must have matching storage classes (both use empty string `""` by default)
 5. **Image Pulls:** May need to pull images locally if cluster nodes have network issues
 6. **Resource Kind Case:** Always use PascalCase singular form for Kubernetes resource kinds in ArgoCD project configuration
+
+## Automation Script Reference
+
+The `docs/zabbix-argocd.sh` script automates the entire Zabbix installation process via ArgoCD.
+
+### Installation
+
+```bash
+# Basic installation with defaults (app: prod, namespace: automated)
+./docs/zabbix-argocd.sh install
+
+# Install with custom app name
+./docs/zabbix-argocd.sh install --app staging
+# or
+./docs/zabbix-argocd.sh install --app=staging
+
+# Install with multiple overrides
+./docs/zabbix-argocd.sh install \
+  --app=production \
+  --namespace=prod \
+  --project=zabbix-prod \
+  --repo=git@github.com:your-org/helm.git
+
+# Force recreate existing app/project
+./docs/zabbix-argocd.sh install --app prod --force
+```
+
+### Uninstallation
+
+```bash
+# Uninstall (requires --force for safety)
+./docs/zabbix-argocd.sh uninstall --force
+```
+
+### Status Check
+
+```bash
+# Check current deployment status
+./docs/zabbix-argocd.sh status
+
+# Check status with custom app name
+./docs/zabbix-argocd.sh status --app staging
+```
+
+### Script Options
+
+All options support both `--flag value` and `--flag=value` syntax:
+
+- `--app NAME` - ArgoCD application name (default: `prod`)
+- `--namespace NAME` - Target Kubernetes namespace (default: `automated`)
+- `--project NAME` - ArgoCD project name (default: `zabbix`)
+- `--repo URL` - Git repository URL (default: `git@github.com:Maborak-Technologies-Inc/helm.git`)
+- `--chart-path PATH` - Helm chart path in repository (default: `charts/zabbix`)
+- `--ssh-key PATH` - SSH key path for private repos (default: `~/.ssh/id_rsa_argocd`)
+- `--force` - Delete and recreate existing resources (apps, projects)
+
+### Safety Features
+
+- **No accidental deletions**: The script will not delete existing apps/projects unless `--force` is used
+- **Clear error messages**: If a resource already exists, the script provides helpful suggestions
+- **Force flag required**: Uninstall requires `--force` to prevent accidental data loss
+
+### Port-Forward Instructions
+
+The script does **not** automatically start port-forwards. After installation, you'll see instructions like:
+
+```bash
+# Access Zabbix UI
+kubectl port-forward svc/zabbixprod-ui -n automated 8081:80
+
+# Then open: http://localhost:8081
+```
+
+Run these commands in separate terminals and keep them running.
 
 ## Common Commands Reference
 

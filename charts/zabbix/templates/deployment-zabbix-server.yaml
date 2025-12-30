@@ -80,6 +80,8 @@ spec:
             - |
               POD_NAME=$(hostname)
               NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              CONTAINER_NAME="{{ include "chart-name" . }}-zabbix-server"
+              APP_LABEL="{{ include "chart-name" . }}-server"
 
               # Ensure pod has a label before modifying it
               if ! kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.metadata.labels.mode}' 2>/dev/null; then
@@ -92,7 +94,7 @@ spec:
               # Wait for server to start and log file to be available
               echo "Waiting for Zabbix server to be ready..."
               for i in $(seq 1 60); do
-                  if kubectl exec $POD_NAME -n $NAMESPACE -c zabbixprod-zabbix-server -- test -f "$LOG_FILE" 2>/dev/null; then
+                  if kubectl exec $POD_NAME -n $NAMESPACE -c $CONTAINER_NAME -- test -f "$LOG_FILE" 2>/dev/null; then
                       echo "Server log file found, starting label monitoring..."
                       break
                   fi
@@ -104,7 +106,7 @@ spec:
                   
                   # Read the actual Zabbix server log file to check HA mode
                   # Look for the most recent mode message (active or standby)
-                  HA_MODE=$(kubectl exec $POD_NAME -n $NAMESPACE -c zabbixprod-zabbix-server -- tail -500 "$LOG_FILE" 2>/dev/null | grep -iE 'node.*(active|standby).*mode|node.*working in.*(active|standby).*mode|node.*switched to.*(active|standby).*mode' | tail -1)
+                  HA_MODE=$(kubectl exec $POD_NAME -n $NAMESPACE -c $CONTAINER_NAME -- tail -500 "$LOG_FILE" 2>/dev/null | grep -iE 'node.*(active|standby).*mode|node.*working in.*(active|standby).*mode|node.*switched to.*(active|standby).*mode' | tail -1)
                   
                   # Determine if this pod is actually active or standby based on log
                   if echo "$HA_MODE" | grep -qiE 'node.*active.*mode|node.*working in.*active.*mode|node.*switched to.*active.*mode|node.*started in.*active.*mode'; then
@@ -121,8 +123,8 @@ spec:
                       fi
                   else
                       # No clear mode message in log yet, use fallback logic
-                      # Check if there are other pods with active labels
-                      OTHER_ACTIVE=$(kubectl get pods -n $NAMESPACE -l app=zabbixprod-server,mode=active --field-selector metadata.name!=$POD_NAME --no-headers 2>/dev/null | wc -l)
+                      # Check if there are other pods with active labels (same app label only)
+                      OTHER_ACTIVE=$(kubectl get pods -n $NAMESPACE -l app=$APP_LABEL,mode=active --field-selector metadata.name!=$POD_NAME --no-headers 2>/dev/null | wc -l)
                       
                       if [ "$OTHER_ACTIVE" -eq 0 ]; then
                           # No other active servers, default to active (single-node scenario)

@@ -6,17 +6,27 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-NAMESPACE="automated"
-APP_NAME="prod"
-PROJECT_NAME="zabbix"
-REPO_URL="git@github.com:Maborak-Technologies-Inc/helm.git"
-CHART_PATH="charts/zabbix"
-SSH_KEY_PATH="${HOME}/.ssh/id_rsa_argocd"
+# Configuration - Default values (can be overridden with flags)
+DEFAULT_NAMESPACE="automated"
+DEFAULT_APP_NAME="prod"
+DEFAULT_PROJECT_NAME="zabbix"
+DEFAULT_REPO_URL="git@github.com:Maborak-Technologies-Inc/helm.git"
+DEFAULT_CHART_PATH="charts/zabbix"
+DEFAULT_SSH_KEY_PATH="${HOME}/.ssh/id_rsa_argocd"
 ARGOCD_PORT=8080
 ZABBIX_UI_PORT=8081
+
+# Runtime variables
+NAMESPACE=""
+APP_NAME=""
+PROJECT_NAME=""
+REPO_URL=""
+CHART_PATH=""
+SSH_KEY_PATH=""
+FORCE=false  # Force flag to delete/recreate existing resources
 
 # Functions
 print_info() {
@@ -92,24 +102,38 @@ install_zabbix() {
     
     # Step 2: Verify ArgoCD project exists
     print_info "Verifying ArgoCD project '${PROJECT_NAME}'..."
-    if ! argocd proj get ${PROJECT_NAME} &> /dev/null; then
+    if argocd proj get ${PROJECT_NAME} &> /dev/null; then
+        if [ "$FORCE" = true ]; then
+            print_warn "Project '${PROJECT_NAME}' already exists. Deleting (--force enabled)..."
+            argocd proj delete ${PROJECT_NAME} --yes || {
+                print_error "Failed to delete existing project"
+                exit 1
+            }
+            print_info "Creating project '${PROJECT_NAME}'..."
+            argocd proj create ${PROJECT_NAME} --description "Zabbix project" || {
+                print_error "Failed to create project"
+                exit 1
+            }
+        else
+            print_warn "Project '${PROJECT_NAME}' already exists"
+            print_info "Skipping project creation. Use --force to delete and recreate it."
+        fi
+    else
         print_info "Creating ArgoCD project '${PROJECT_NAME}'..."
         argocd proj create ${PROJECT_NAME} --description "Zabbix project"
-        
-        # Allow PersistentVolume
-        print_info "Allowing PersistentVolume in project..."
-        argocd proj allow-cluster-resource ${PROJECT_NAME} "" PersistentVolume
-        
-        # Add repository to project
-        print_info "Adding repository to project..."
-        argocd proj add-source ${PROJECT_NAME} ${REPO_URL}
-        
-        # Add destination namespace
-        print_info "Adding destination namespace to project..."
-        argocd proj add-destination ${PROJECT_NAME} https://kubernetes.default.svc ${NAMESPACE}
-    else
-        print_info "Project '${PROJECT_NAME}' already exists"
     fi
+    
+    # Allow PersistentVolume
+    print_info "Allowing PersistentVolume in project..."
+    argocd proj allow-cluster-resource ${PROJECT_NAME} "" PersistentVolume 2>/dev/null || print_warn "PersistentVolume may already be allowed"
+    
+    # Add repository to project
+    print_info "Adding repository to project..."
+    argocd proj add-source ${PROJECT_NAME} ${REPO_URL} 2>/dev/null || print_warn "Repository may already be added to project"
+    
+    # Add destination namespace
+    print_info "Adding destination namespace to project..."
+    argocd proj add-destination ${PROJECT_NAME} https://kubernetes.default.svc ${NAMESPACE} 2>/dev/null || print_warn "Destination may already be added"
     
     # Step 3: Add repository to ArgoCD
     print_info "Adding repository to ArgoCD..."
@@ -127,26 +151,33 @@ install_zabbix() {
     # Step 4: Create ArgoCD application
     print_info "Creating ArgoCD application '${APP_NAME}'..."
     if argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null; then
-        print_warn "Application '${APP_NAME}' already exists. Deleting it first..."
-        argocd app delete ${APP_NAME} --yes 2>/dev/null || kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
-        print_info "Waiting for application deletion to complete..."
-        sleep 3
-        # Wait until application is actually gone (max 30 seconds)
-        TIMEOUT=30
-        ELAPSED=0
-        while (argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null) && [ $ELAPSED -lt $TIMEOUT ]; do
-            print_info "Waiting for application to be fully deleted... (${ELAPSED}s/${TIMEOUT}s)"
-            sleep 2
-            ELAPSED=$((ELAPSED + 2))
-        done
-        if [ $ELAPSED -ge $TIMEOUT ]; then
-            print_warn "Application deletion taking longer than expected. Removing finalizers..."
-            # Remove finalizers to allow deletion
-            kubectl patch application ${APP_NAME} -n argocd -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
-            sleep 2
-            # Try force deletion
-            kubectl delete application ${APP_NAME} -n argocd --force --grace-period=0 2>/dev/null || true
+        if [ "$FORCE" = true ]; then
+            print_warn "Application '${APP_NAME}' already exists. Deleting it first (--force enabled)..."
+            argocd app delete ${APP_NAME} --yes 2>/dev/null || kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
+            print_info "Waiting for application deletion to complete..."
             sleep 3
+            # Wait until application is actually gone (max 30 seconds)
+            TIMEOUT=30
+            ELAPSED=0
+            while (argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null) && [ $ELAPSED -lt $TIMEOUT ]; do
+                print_info "Waiting for application to be fully deleted... (${ELAPSED}s/${TIMEOUT}s)"
+                sleep 2
+                ELAPSED=$((ELAPSED + 2))
+            done
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+                print_warn "Application deletion taking longer than expected. Removing finalizers..."
+                # Remove finalizers to allow deletion
+                kubectl patch application ${APP_NAME} -n argocd -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+                sleep 2
+                # Try force deletion
+                kubectl delete application ${APP_NAME} -n argocd --force --grace-period=0 2>/dev/null || true
+                sleep 3
+            fi
+        else
+            print_error "Application '${APP_NAME}' already exists!"
+            print_info "Use a different name or add --force to delete and recreate it."
+            print_info "Example: $0 install --app ${APP_NAME}-new --force"
+            exit 1
         fi
     fi
     
@@ -175,37 +206,62 @@ install_zabbix() {
     
     # Step 6: Wait for pods to be ready
     print_info "Waiting for pods to be ready..."
-    kubectl wait --for=condition=ready pod -l app=zabbixprod-mariadb -n ${NAMESPACE} --timeout=300s || print_warn "MariaDB pod not ready yet"
-    kubectl wait --for=condition=ready pod -l app=zabbixprod-server -n ${NAMESPACE} --timeout=300s || print_warn "Server pod not ready yet"
-    kubectl wait --for=condition=ready pod -l app=zabbixprod-ui -n ${NAMESPACE} --timeout=300s || print_warn "UI pod not ready yet"
-    
-    # Step 7: Setup port-forward for UI
-    print_info "Setting up port-forward for Zabbix UI on port ${ZABBIX_UI_PORT}..."
-    pkill -f "port-forward.*zabbixprod-ui" 2>/dev/null || true
-    kubectl port-forward svc/zabbixprod-ui -n ${NAMESPACE} ${ZABBIX_UI_PORT}:80 > /tmp/zabbix-portforward.log 2>&1 &
-    sleep 2
-    
-    # Verify port-forward
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:${ZABBIX_UI_PORT} | grep -q "200"; then
-        print_info "Port-forward is working"
-    else
-        print_warn "Port-forward may not be working yet"
-    fi
+    # Note: Helm release name is zabbix${APP_NAME}, so labels are zabbix${APP_NAME}-mariadb, etc.
+    HELM_RELEASE="zabbix${APP_NAME}"
+    kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE}-mariadb -n ${NAMESPACE} --timeout=300s || print_warn "MariaDB pod not ready yet"
+    kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE}-server -n ${NAMESPACE} --timeout=300s || print_warn "Server pod not ready yet"
+    kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE}-ui -n ${NAMESPACE} --timeout=300s || print_warn "UI pod not ready yet"
     
     # Display status
     print_info "Installation complete!"
     echo ""
-    print_info "Zabbix UI is available at: http://localhost:${ZABBIX_UI_PORT}"
-    print_info "Default credentials:"
-    echo "  Username: Admin"
-    echo "  Password: zabbix"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  Zabbix Installation Complete!${NC}"
+    echo -e "${GREEN}========================================${NC}"
     echo ""
-    print_info "To check status: kubectl get pods -n ${NAMESPACE}"
-    print_info "To view ArgoCD app: argocd app get ${APP_NAME}"
+    echo -e "${BLUE}Access Zabbix UI:${NC}"
+    HELM_RELEASE="zabbix${APP_NAME}"
+    echo ""
+    echo -e "${GREEN}Option 1: Using kubectl proxy (Recommended - single command for all services)${NC}"
+    echo "  1. Start kubectl proxy in a separate terminal:"
+    echo -e "     ${GREEN}kubectl proxy${NC}"
+    echo ""
+    echo "  2. Access Zabbix UI via proxy:"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${HELM_RELEASE}-ui:80/proxy/${NC}"
+    echo ""
+    echo "  3. Access ArgoCD UI via the same proxy:"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/argocd/services/argocd-server:443/proxy/${NC}"
+    echo ""
+    echo -e "${GREEN}Option 2: Using port-forward (Direct access)${NC}"
+    echo "  1. Run port-forward in a separate terminal:"
+    echo -e "     ${GREEN}kubectl port-forward svc/${HELM_RELEASE}-ui -n ${NAMESPACE} ${ZABBIX_UI_PORT}:80${NC}"
+    echo ""
+    echo "  2. Open your browser and navigate to:"
+    echo -e "     ${GREEN}http://localhost:${ZABBIX_UI_PORT}${NC}"
+    echo ""
+    echo "  3. Login with default credentials:"
+    echo -e "     Username: ${GREEN}Admin${NC}"
+    echo -e "     Password: ${GREEN}zabbix${NC}"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} Keep the proxy or port-forward command running in a separate terminal."
+    echo "      Press Ctrl+C in that terminal to stop it."
+    echo ""
+    echo -e "${BLUE}Useful Commands:${NC}"
+    echo -e "  • Check status: ${GREEN}kubectl get pods -n ${NAMESPACE}${NC}"
+    echo -e "  • View ArgoCD app: ${GREEN}argocd app get ${APP_NAME}${NC}"
+    echo -e "  • Sync app: ${GREEN}argocd app sync ${APP_NAME}${NC}"
+    echo ""
 }
 
 uninstall_zabbix() {
-    print_info "Starting Zabbix uninstallation..."
+    if [ "$FORCE" != true ]; then
+        print_error "Uninstall requires --force flag for safety"
+        print_info "Usage: $0 uninstall --force"
+        print_warn "This will delete the ArgoCD application, all Zabbix resources, and PersistentVolumes!"
+        exit 1
+    fi
+    
+    print_warn "Starting Zabbix uninstallation (--force enabled)..."
     
     # Step 1: Delete ArgoCD application
     print_info "Deleting ArgoCD application '${APP_NAME}'..."
@@ -236,7 +292,8 @@ uninstall_zabbix() {
     
     # Step 2: Stop port-forward
     print_info "Stopping port-forward..."
-    pkill -f "port-forward.*zabbixprod-ui" 2>/dev/null || true
+    HELM_RELEASE="zabbix${APP_NAME}"
+    pkill -f "port-forward.*${HELM_RELEASE}-ui" 2>/dev/null || true
     
     # Step 3: Delete PersistentVolumes
     print_info "Deleting PersistentVolumes..."
@@ -316,34 +373,145 @@ show_status() {
     fi
 }
 
+# Parse arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --app=*)
+                APP_NAME="${1#*=}"
+                shift
+                ;;
+            --app)
+                APP_NAME="$2"
+                shift 2
+                ;;
+            --namespace=*)
+                NAMESPACE="${1#*=}"
+                shift
+                ;;
+            --namespace)
+                NAMESPACE="$2"
+                shift 2
+                ;;
+            --project=*)
+                PROJECT_NAME="${1#*=}"
+                shift
+                ;;
+            --project)
+                PROJECT_NAME="$2"
+                shift 2
+                ;;
+            --repo=*)
+                REPO_URL="${1#*=}"
+                shift
+                ;;
+            --repo)
+                REPO_URL="$2"
+                shift 2
+                ;;
+            --chart-path=*)
+                CHART_PATH="${1#*=}"
+                shift
+                ;;
+            --chart-path)
+                CHART_PATH="$2"
+                shift 2
+                ;;
+            --ssh-key=*)
+                SSH_KEY_PATH="${1#*=}"
+                shift
+                ;;
+            --ssh-key)
+                SSH_KEY_PATH="$2"
+                shift 2
+                ;;
+            --force)
+                FORCE=true
+                shift
+                ;;
+            *)
+                # Unknown option, will be handled by main case statement
+                break
+                ;;
+        esac
+    done
+}
+
+# Apply defaults if not set
+apply_defaults() {
+    if [ -z "$NAMESPACE" ]; then
+        NAMESPACE="$DEFAULT_NAMESPACE"
+    fi
+    if [ -z "$APP_NAME" ]; then
+        APP_NAME="$DEFAULT_APP_NAME"
+    fi
+    if [ -z "$PROJECT_NAME" ]; then
+        PROJECT_NAME="$DEFAULT_PROJECT_NAME"
+    fi
+    if [ -z "$REPO_URL" ]; then
+        REPO_URL="$DEFAULT_REPO_URL"
+    fi
+    if [ -z "$CHART_PATH" ]; then
+        CHART_PATH="$DEFAULT_CHART_PATH"
+    fi
+    if [ -z "$SSH_KEY_PATH" ]; then
+        SSH_KEY_PATH="$DEFAULT_SSH_KEY_PATH"
+    fi
+}
+
 show_usage() {
-    echo "Usage: $0 {install|uninstall|status}"
+    echo "Usage: $0 install [OPTIONS]"
+    echo "       $0 uninstall [OPTIONS]"
+    echo "       $0 status [OPTIONS]"
     echo ""
     echo "Commands:"
     echo "  install    - Install Zabbix via ArgoCD"
-    echo "  uninstall  - Uninstall Zabbix and clean up all resources including PVs"
+    echo "  uninstall  - Uninstall Zabbix and clean up all resources including PVs (requires --force)"
     echo "  status     - Show current Zabbix deployment status"
     echo ""
-    echo "Configuration (edit script to change):"
-    echo "  Namespace: ${NAMESPACE}"
-    echo "  App Name: ${APP_NAME}"
-    echo "  Project: ${PROJECT_NAME}"
-    echo "  Repository: ${REPO_URL}"
-    echo "  Chart Path: ${CHART_PATH}"
-    echo "  SSH Key: ${SSH_KEY_PATH}"
+    echo "Options:"
+    echo "  --app NAME           ArgoCD application name (default: ${DEFAULT_APP_NAME})"
+    echo "  --namespace NAME     Target Kubernetes namespace (default: ${DEFAULT_NAMESPACE})"
+    echo "  --project NAME       ArgoCD project name (default: ${DEFAULT_PROJECT_NAME})"
+    echo "  --repo URL           Git repository URL (default: ${DEFAULT_REPO_URL})"
+    echo "  --chart-path PATH    Helm chart path in repository (default: ${DEFAULT_CHART_PATH})"
+    echo "  --ssh-key PATH       SSH key path for private repos (default: ${DEFAULT_SSH_KEY_PATH})"
+    echo "  --force              Delete and recreate existing resources (apps, projects)"
+    echo ""
+    echo "Examples:"
+    echo "  # Install with defaults"
+    echo "  $0 install"
+    echo ""
+    echo "  # Install with custom app name"
+    echo "  $0 install --app staging"
+    echo ""
+    echo "  # Force recreate existing app"
+    echo "  $0 install --app prod --force"
+    echo ""
+    echo "  # Uninstall (requires --force)"
+    echo "  $0 uninstall --force"
 }
 
 # Main script
-case "${1:-}" in
+COMMAND="${1:-}"
+shift || true
+
+case "$COMMAND" in
     install)
+        parse_args "$@"
+        apply_defaults
         check_prerequisites
         install_zabbix
         ;;
     uninstall)
+        parse_args "$@"
+        apply_defaults
         check_prerequisites
         uninstall_zabbix
         ;;
     status)
+        parse_args "$@"
+        apply_defaults
         check_prerequisites
         show_status
         ;;
