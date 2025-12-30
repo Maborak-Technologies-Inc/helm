@@ -3,9 +3,9 @@ entries:
   zabbix:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2025-12-29T09:02:09.690395219Z"
+    created: "2025-12-30T04:04:58.309433963Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
-    digest: 2b32f0371a10c2d1ad07c738dcd77b15d4eaf251708ce49f5e17465c50e7442c
+    digest: c2b54e863a5695e53b7ffec85a1ba3ca54c029ed5b2b05fa556d0593f16dbc81
     icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png
     name: zabbix
     urls:
@@ -14,11 +14,11 @@ entries:
   zabbix-stack:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2025-12-29T09:02:09.690838234Z"
+    created: "2025-12-30T04:04:58.30986895Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
     digest: 7d26643e0dd7a90b3aa6f9f27835bdbcbcd55d4ccbef16a20604b4a7bc86777d
     name: zabbix-stack
     urls:
     - https://maborak-technologies-inc.github.io/helm/zabbix-stack-0.1.0.tgz
     version: 0.1.0
-generated: "2025-12-29T09:02:09.68958456Z"
+generated: "2025-12-30T04:04:58.30860191Z"
