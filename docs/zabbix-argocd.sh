@@ -93,6 +93,160 @@ setup_argocd_access() {
     print_info "Successfully logged into ArgoCD"
 }
 
+wait_for_sync_completion() {
+    local app_name=$1
+    local timeout=${2:-60}
+    local elapsed=0
+    
+    print_info "Checking for in-progress operations on '${app_name}'..."
+    
+    # Check if there's an operation in progress by trying to sync (which will fail if one is running)
+    # First, try to get operation status from app info
+    local app_info=$(argocd app get ${app_name} -o json 2>/dev/null || echo "")
+    
+    if [ -z "$app_info" ]; then
+        print_warn "Could not get application info, assuming no operation in progress"
+        return 0
+    fi
+    
+    # Check for operation state in the JSON
+    local operation_state=$(echo "$app_info" | grep -o '"operationState":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+    
+    if [ -z "$operation_state" ] || [ "$operation_state" = "null" ]; then
+        print_info "No operation in progress"
+        return 0
+    fi
+    
+    # If operation is running, wait for it
+    if echo "$operation_state" | grep -qi "running"; then
+        print_info "Operation in progress (state: ${operation_state}), waiting for completion..."
+        while [ $elapsed -lt $timeout ]; do
+            sleep 2
+            elapsed=$((elapsed + 2))
+            
+            # Check again
+            app_info=$(argocd app get ${app_name} -o json 2>/dev/null || echo "")
+            operation_state=$(echo "$app_info" | grep -o '"operationState":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+            
+            if [ -z "$operation_state" ] || [ "$operation_state" = "null" ] || echo "$operation_state" | grep -qi "succeeded\|failed"; then
+                print_info "Operation completed (state: ${operation_state})"
+                return 0
+            fi
+            
+            if [ $((elapsed % 10)) -eq 0 ]; then
+                print_info "Still waiting... (${elapsed}s/${timeout}s)"
+            fi
+        done
+        
+        # Timeout reached
+        print_warn "Timeout waiting for operation to complete. Attempting to terminate..."
+        argocd app terminate-op ${app_name} 2>/dev/null || true
+        sleep 3
+    elif echo "$operation_state" | grep -qi "succeeded\|failed"; then
+        print_info "Previous operation completed (state: ${operation_state})"
+        return 0
+    else
+        # Unknown state, try to terminate
+        print_warn "Unknown operation state: ${operation_state}. Attempting to terminate..."
+        argocd app terminate-op ${app_name} 2>/dev/null || true
+        sleep 3
+    fi
+    
+    return 0
+}
+
+wait_for_app_synced() {
+    local app_name=$1
+    local timeout=${2:-120}
+    local elapsed=0
+    
+    print_info "Waiting for application '${app_name}' to be synced..."
+    
+    while [ $elapsed -lt $timeout ]; do
+        # Get sync status
+        local sync_status=$(argocd app get ${app_name} -o json 2>/dev/null | grep -o '"sync":{"status":"[^"]*"' | head -1 | cut -d'"' -f6 || echo "")
+        
+        if [ "$sync_status" = "Synced" ]; then
+            print_info "Application is synced"
+            return 0
+        fi
+        
+        # Also check if there's an operation in progress
+        local operation_state=$(argocd app get ${app_name} -o json 2>/dev/null | grep -o '"operationState":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+        
+        if [ -n "$operation_state" ] && [ "$operation_state" != "null" ]; then
+            if echo "$operation_state" | grep -qi "running"; then
+                if [ $((elapsed % 10)) -eq 0 ]; then
+                    print_info "Sync in progress... (${elapsed}s/${timeout}s)"
+                fi
+            fi
+        fi
+        
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    
+    if [ $elapsed -ge $timeout ]; then
+        print_warn "Timeout waiting for application to sync (waited ${timeout}s)"
+        print_info "Application may still be syncing. Continuing..."
+        return 1
+    fi
+    
+    return 0
+}
+
+safe_sync_app() {
+    local app_name=$1
+    
+    print_info "Preparing to sync '${app_name}'..."
+    
+    # Wait for any in-progress operations to complete
+    wait_for_sync_completion ${app_name} 60
+    
+    # Attempt sync with retry logic
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        print_info "Attempting sync (attempt $((retry + 1))/${max_retries})..."
+        
+        # Capture both output and exit code
+        if argocd app sync ${app_name} > /tmp/argocd-sync.log 2>&1; then
+            cat /tmp/argocd-sync.log
+            print_info "Sync initiated successfully"
+            return 0
+        else
+            # Show the error
+            cat /tmp/argocd-sync.log
+            # Check if error is due to operation in progress
+            if grep -q "another operation is already in progress" /tmp/argocd-sync.log 2>/dev/null; then
+                retry=$((retry + 1))
+                if [ $retry -lt $max_retries ]; then
+                    print_warn "Operation in progress detected. Waiting and retrying..."
+                    wait_for_sync_completion ${app_name} 30
+                    sleep 2
+                else
+                    print_warn "Max retries reached. Attempting to terminate stuck operation..."
+                    argocd app terminate-op ${app_name} 2>/dev/null || true
+                    sleep 3
+                    # One final attempt
+                    if argocd app sync ${app_name} 2>/dev/null; then
+                        print_info "Sync initiated after terminating stuck operation"
+                        return 0
+                    fi
+                fi
+            else
+                # Different error, don't retry
+                print_error "Sync failed with different error"
+                return 1
+            fi
+        fi
+    done
+    
+    print_error "Failed to sync after ${max_retries} attempts"
+    return 1
+}
+
 install_zabbix() {
     print_info "Starting Zabbix installation..."
     
@@ -206,9 +360,11 @@ install_zabbix() {
             --auto-prune
     fi
     
-    # Step 5: Initial sync (auto-sync will handle future changes)
-    print_info "Performing initial sync..."
-    argocd app sync ${APP_NAME}
+    # Step 5: Wait for auto-sync to complete (auto-sync is enabled, so no manual sync needed)
+    print_info "Waiting for auto-sync to complete..."
+    wait_for_app_synced ${APP_NAME} 120 || {
+        print_warn "Auto-sync may still be in progress. Continuing to wait for pods..."
+    }
     
     # Step 6: Wait for pods to be ready
     print_info "Waiting for pods to be ready..."
