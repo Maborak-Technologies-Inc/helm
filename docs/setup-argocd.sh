@@ -78,11 +78,11 @@ install_argocd() {
     if helm list -n ${ARGOCD_NAMESPACE} | grep -q argocd; then
         print_warn "ArgoCD is already installed. Upgrading..."
         helm upgrade argocd argo/argo-cd -n ${ARGOCD_NAMESPACE} \
-            --set server.service.type=LoadBalancer \
+            --set server.service.type=NodePort \
             --set controller.applicationNamespaces=""
     else
         helm install argocd argo/argo-cd -n ${ARGOCD_NAMESPACE} \
-            --set server.service.type=LoadBalancer \
+            --set server.service.type=NodePort \
             --set controller.applicationNamespaces=""
     fi
     

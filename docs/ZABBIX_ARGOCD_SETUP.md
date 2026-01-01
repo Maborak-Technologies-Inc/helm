@@ -205,11 +205,13 @@ kubectl create namespace argocd
 
 ```bash
 helm install argocd argo/argo-cd -n argocd \
-  --set server.service.type=LoadBalancer \
+  --set server.service.type=NodePort \
   --set controller.applicationNamespaces=""
 ```
 
 **Why this matters:** Without this setting, ArgoCD runs in "namespaced mode" and cannot manage cluster-scoped resources like PersistentVolumes, which Zabbix requires.
+
+**Note:** NodePort is used instead of LoadBalancer to avoid Docker Desktop automatically mapping the service to localhost:80/443. With NodePort, you can access ArgoCD via the node IP and the assigned NodePort (e.g., `https://<NODE-IP>:30443`).
 
 #### 2.2.4 Wait for ArgoCD to be Ready
 
@@ -593,16 +595,20 @@ The ArgoCD UI is accessible through the connection method you set up in Part 2.3
 
 **Note:** Make sure the port-forward or `argocd proxy` is still running in a terminal session. If you closed it, restart it using the commands from Part 2.3.
 
-**If using LoadBalancer service type:**
+**If using NodePort service type:**
 
 ```bash
+# Get the NodePort number
 kubectl get svc argocd-server -n argocd
-# Use the EXTERNAL-IP to access the UI
+# Get a node IP
+kubectl get nodes -o wide
 ```
 
-- URL: `https://<EXTERNAL-IP>`
+- URL: `https://<NODE-IP>:<NODE-PORT>` (e.g., `https://172.18.0.2:30443`)
 - Username: `admin`
 - Password: (from Part 2.4)
+
+**Note:** On Docker Desktop, you can also use `localhost` instead of the node IP (e.g., `https://localhost:30443`).
 
 **If using kubectl proxy:**
 
