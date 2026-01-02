@@ -47,7 +47,7 @@ database:
   # SQLite: "sqlite:///./database/product_cache.db"
   # PostgreSQL: "postgresql://user:password@postgres:5432/amazon_monitor"
   # MySQL: "mysql+pymysql://user:password@mysql:3306/amazon_monitor"
-  url: "sqlite:///./database/product_cache.db"
+  url: "sqlite:///./data/product_cache.db"
   
   # Database pool settings (for SQLAlchemy)
   echo: false
@@ -111,7 +111,7 @@ storage:
   size: "5Gi"
   accessModes:
     - ReadWriteOnce
-  mountPath: "/app/database"
+  mountPath: "/app/data"
 
 # Environment variables (additional custom env vars)
 env: []
