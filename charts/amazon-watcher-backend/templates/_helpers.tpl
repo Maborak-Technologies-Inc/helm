@@ -21,8 +21,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "amazon-watcher-backend.image" -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
-{{- printf "%s:%s" .Values.image.repository $tag -}}
+{{- if and .Values.image.tag (ne .Values.image.tag "") -}}
+{{- printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+{{- else -}}
+{{- printf "%s:%s" .Values.image.repository .Chart.AppVersion -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "amazon-watcher-backend.serviceAccountName" -}}
