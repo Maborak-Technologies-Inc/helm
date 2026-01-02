@@ -1,0 +1,7 @@
+apiVersion: v2
+name: amazon-watcher-backend
+description: A Helm chart for deploying Amazon Watcher Backend API (FastAPI application).
+version: 0.1.0
+appVersion: "2.0.0"
+icon: https://raw.githubusercontent.com/fastapi/fastapi/master/docs/en/docs/img/icon-white.svg
+

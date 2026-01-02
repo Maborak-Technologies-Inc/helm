@@ -1,0 +1,20 @@
+{{- if and .Values.storage.enabled .Values.storage.storageClassName }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "amazon-watcher-backend.fullname" . }}-pvc
+  labels:
+    {{- include "amazon-watcher-backend.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- range .Values.storage.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+  {{- if .Values.storage.storageClassName }}
+  storageClassName: {{ .Values.storage.storageClassName }}
+  {{- end }}
+{{- end }}
+

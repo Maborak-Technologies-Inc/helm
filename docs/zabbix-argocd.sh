@@ -27,6 +27,7 @@ REPO_URL=""
 CHART_PATH=""
 SSH_KEY_PATH=""
 FORCE=false  # Force flag to delete/recreate existing resources
+ZABBIX_VERSION=""  # Zabbix version to set in Chart.yaml
 
 # Functions
 print_info() {
@@ -337,27 +338,36 @@ install_zabbix() {
     
     # Create application with auto-sync enabled
     print_info "Creating ArgoCD application with auto-sync enabled..."
-    if ! argocd app create ${APP_NAME} \
-        --repo ${REPO_URL} \
-        --path ${CHART_PATH} \
-        --dest-name in-cluster \
-        --dest-namespace ${NAMESPACE} \
-        --project ${PROJECT_NAME} \
-        --sync-policy automated \
-        --self-heal \
-        --auto-prune \
+    
+    # Build base command arguments
+    BASE_ARGS=(
+        --repo "${REPO_URL}"
+        --path "${CHART_PATH}"
+        --dest-name in-cluster
+        --dest-namespace "${NAMESPACE}"
+        --project "${PROJECT_NAME}"
+        --sync-policy automated
+        --self-heal
+        --auto-prune
+    )
+    
+    # Add Helm set arguments if version is specified
+    if [ -n "$ZABBIX_VERSION" ]; then
+        print_info "Setting Zabbix version to ${ZABBIX_VERSION} via Helm values..."
+        BASE_ARGS+=(
+            --helm-set "images.zabbixServer.tag=${ZABBIX_VERSION}"
+            --helm-set "images.zabbixUI.tag=${ZABBIX_VERSION}"
+            --helm-set "images.mariadb.tag=${ZABBIX_VERSION}"
+        )
+    fi
+    
+    if ! argocd app create "${APP_NAME}" \
+        "${BASE_ARGS[@]}" \
         --upsert 2>/dev/null; then
         # If upsert doesn't work, try without it (for older ArgoCD versions)
         print_info "Trying without upsert flag..."
-        argocd app create ${APP_NAME} \
-            --repo ${REPO_URL} \
-            --path ${CHART_PATH} \
-            --dest-name in-cluster \
-            --dest-namespace ${NAMESPACE} \
-            --project ${PROJECT_NAME} \
-            --sync-policy automated \
-            --self-heal \
-            --auto-prune
+        argocd app create "${APP_NAME}" \
+            "${BASE_ARGS[@]}"
     fi
     
     # Step 5: Wait for auto-sync to complete (auto-sync is enabled, so no manual sync needed)
@@ -587,6 +597,14 @@ parse_args() {
                 SSH_KEY_PATH="$2"
                 shift 2
                 ;;
+            --version=*)
+                ZABBIX_VERSION="${1#*=}"
+                shift
+                ;;
+            --version)
+                ZABBIX_VERSION="$2"
+                shift 2
+                ;;
             --force)
                 FORCE=true
                 shift
@@ -638,6 +656,7 @@ show_usage() {
     echo "  --repo URL           Git repository URL (default: ${DEFAULT_REPO_URL})"
     echo "  --chart-path PATH    Helm chart path in repository (default: ${DEFAULT_CHART_PATH})"
     echo "  --ssh-key PATH       SSH key path for private repos (default: ${DEFAULT_SSH_KEY_PATH})"
+    echo "  --version VERSION    Zabbix version to set in Chart.yaml (e.g., 7.4.6)"
     echo "  --force              Delete and recreate existing resources (apps, projects)"
     echo ""
     echo "Examples:"
@@ -646,6 +665,9 @@ show_usage() {
     echo ""
     echo "  # Install with custom app name"
     echo "  $0 install --app staging"
+    echo ""
+    echo "  # Install with specific Zabbix version"
+    echo "  $0 install --version 7.4.6"
     echo ""
     echo "  # Force recreate existing app"
     echo "  $0 install --app prod --force"
