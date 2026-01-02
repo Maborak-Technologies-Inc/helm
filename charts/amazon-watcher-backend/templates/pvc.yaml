@@ -1,10 +1,8 @@
-{{- if and .Values.storage.enabled .Values.storage.storageClassName }}
+{{- if .Values.storage.storageClassName }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "amazon-watcher-backend.fullname" . }}-pvc
-  labels:
-    {{- include "amazon-watcher-backend.labels" . | nindent 4 }}
+  name: {{ include "chart-name" . }}-pvc
 spec:
   accessModes:
     {{- range .Values.storage.accessModes }}
@@ -17,4 +15,3 @@ spec:
   storageClassName: {{ .Values.storage.storageClassName }}
   {{- end }}
 {{- end }}
-

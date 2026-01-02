@@ -8,20 +8,25 @@ resources:
     memory: "256Mi"
     cpu: "100m"
 
-# Image configuration
-image:
+images:
   repository: maborak/amazon-watcher-backend
-  tag: ""  # Empty = use Chart.AppVersion, or set to override (e.g., "latest", "2.0.0")
+  tag: ""  # Empty = use Chart.AppVersion, or set to override (e.g., "latest", "0.1")
   pullPolicy: Always
   buildDate: ""  # Optional: Match org.opencontainers.image.created from image
 
-# Service configuration
-service:
-  type: ClusterIP
-  port: 9000
-  targetPort: 9000
+config:
+  databaseUrl: "sqlite:///./data/product_cache.db"
+  jwtSecret: "your-super-secret-jwt-key-here-change-this-in-production"
 
-# Health check configuration
+secrets:
+  jwtSecret: "your-super-secret-jwt-key-here-change-this-in-production"
+
+storage:
+  storageClassName: ""
+  size: "5Gi"
+  accessModes:
+    - ReadWriteOnce
+
 healthChecks:
   livenessProbe:
     httpGet:
@@ -39,119 +44,3 @@ healthChecks:
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
-
-# Database configuration
-database:
-  # Database URL - can be SQLite (default) or external database
-  # Examples:
-  # SQLite: "sqlite:///./database/product_cache.db"
-  # PostgreSQL: "postgresql://user:password@postgres:5432/amazon_monitor"
-  # MySQL: "mysql+pymysql://user:password@mysql:3306/amazon_monitor"
-  url: "sqlite:///./data/product_cache.db"
-  
-  # Database pool settings (for SQLAlchemy)
-  echo: false
-  echoPool: false
-  poolSize: 20
-  maxOverflow: 30
-  poolTimeout: 30
-  poolRecycle: 3600
-
-# Server configuration
-server:
-  host: "0.0.0.0"
-  port: 9000
-  reload: false
-  logLevel: "info"
-  accessLog: true
-  workers: 1
-  limitConcurrency: 100
-  limitMaxRequests: 1000
-  timeoutKeepAlive: 30
-  timeoutGracefulShutdown: 30
-
-# JWT Configuration
-jwt:
-  secret: "your-super-secret-jwt-key-here-change-this-in-production"
-  algorithm: "HS256"
-  accessTokenExpiry: 3600
-  refreshTokenExpiry: 2592000
-
-# Monitoring configuration
-monitoring:
-  enabled: false
-  interval: 3600
-  batchSize: 5
-
-# Rate limiting configuration
-rateLimit:
-  enabled: true
-  requests: 20
-  window: 60
-  bypassKey: ""  # Optional bypass key
-
-# Table names configuration (optional overrides)
-tableNames:
-  currencies: "currencies"
-  productStates: "product_states"
-  processStates: "process_states"
-  productChecks: "product_checks"
-  priceHistory: "price_history"
-  monitoringStates: "monitoring_states"
-  bench: "bench"
-  users: "users"
-  userSessions: "user_sessions"
-  userTokens: "user_tokens"
-  userPermissions: "user_permissions"
-
-# Storage configuration (for SQLite persistence)
-storage:
-  enabled: true
-  storageClassName: ""
-  size: "5Gi"
-  accessModes:
-    - ReadWriteOnce
-  mountPath: "/app/data"
-
-# Environment variables (additional custom env vars)
-env: []
-  # Example:
-  # - name: CUSTOM_VAR
-  #   value: "custom_value"
-
-# Security context (container level)
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-
-# Pod security context
-podSecurityContext:
-  fsGroup: 1000
-
-# Node selector
-nodeSelector: {}
-
-# Tolerations
-tolerations: []
-
-# Affinity
-affinity: {}
-
-# Service account
-serviceAccount:
-  create: true
-  name: ""
-  annotations: {}
-
-# Ingress configuration (optional)
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: amazon-watcher-backend.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
