@@ -119,11 +119,10 @@ env: []
   # - name: CUSTOM_VAR
   #   value: "custom_value"
 
-# Security context
+# Security context (container level)
 securityContext:
   runAsNonRoot: true
   runAsUser: 1000
-  fsGroup: 1000
 
 # Pod security context
 podSecurityContext:

@@ -84,9 +84,9 @@ spec:
             - name: JWT_ALGORITHM
               value: {{ .Values.jwt.algorithm | quote }}
             - name: JWT_ACCESS_TOKEN_EXPIRY
-              value: {{ .Values.jwt.accessTokenExpiry | quote }}
+              value: {{ int .Values.jwt.accessTokenExpiry | quote }}
             - name: JWT_REFRESH_TOKEN_EXPIRY
-              value: {{ .Values.jwt.refreshTokenExpiry | quote }}
+              value: {{ int .Values.jwt.refreshTokenExpiry | quote }}
             
             # Monitoring configuration
             - name: MONITOR_ENABLED
