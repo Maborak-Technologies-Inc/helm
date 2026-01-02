@@ -28,6 +28,7 @@ spec:
         - name: {{ include "amazon-watcher-backend.fullname" . }}
           image: {{ include "amazon-watcher-backend.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          workingDir: /app
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -37,6 +38,9 @@ spec:
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           env:
+            # Python path configuration
+            - name: PYTHONPATH
+              value: "/app"
             # Database configuration
             - name: DATABASE_URL
               value: {{ .Values.database.url | quote }}
