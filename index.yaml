@@ -1,22 +1,31 @@
 apiVersion: v1
 entries:
-  amazon-watcher-backend:
+  amazon-watcher-stack:
   - apiVersion: v2
-    appVersion: "0.2"
-    created: "2026-01-02T15:18:01.740957487Z"
-    description: A Helm chart for deploying Amazon Watcher Backend API (FastAPI application).
-    digest: 1337778227b99c2be9d9b61774a12bd8398f2f02ee5aa2baa6519b3eaf12a9ea
-    icon: https://raw.githubusercontent.com/fastapi/fastapi/master/docs/en/docs/img/icon-white.svg
-    name: amazon-watcher-backend
+    appVersion: "0.1"
+    created: "2026-01-20T02:14:28.310588193Z"
+    description: A Helm chart for deploying the complete Amazon Watcher Stack (Backend,
+      UI, Screenshot service, Database, and Ingress routing)
+    digest: 6054b6f8ee41d142df2fa55e2009921d3d5063e0d1470369bd80965143e9c0ea
+    keywords:
+    - amazon
+    - watcher
+    - monitoring
+    - price-tracking
+    maintainers:
+    - email: maborak@maborak.com
+      name: maborak
+    name: amazon-watcher-stack
+    type: application
     urls:
-    - https://maborak-technologies-inc.github.io/helm/amazon-watcher-backend-0.1.0.tgz
+    - https://maborak-technologies-inc.github.io/helm/amazon-watcher-stack-0.1.0.tgz
     version: 0.1.0
   zabbix:
   - apiVersion: v2
     appVersion: 7.4.6
-    created: "2026-01-02T15:18:01.741515137Z"
+    created: "2026-01-20T02:14:28.311184076Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
-    digest: 78f5790ab56cc0be21292ead1a92ecad64cc29502e0a3e9391668059f3d7aad0
+    digest: c8469e24134c82d78e6be73c1d58766c05b727db51e39946e1025fb78b6670a6
     icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png
     name: zabbix
     urls:
@@ -25,11 +34,11 @@ entries:
   zabbix-stack:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2026-01-02T15:18:01.741988971Z"
+    created: "2026-01-20T02:14:28.311679773Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
     digest: 7d26643e0dd7a90b3aa6f9f27835bdbcbcd55d4ccbef16a20604b4a7bc86777d
     name: zabbix-stack
     urls:
     - https://maborak-technologies-inc.github.io/helm/zabbix-stack-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-02T15:18:01.740507387Z"
+generated: "2026-01-20T02:14:28.309337436Z"
