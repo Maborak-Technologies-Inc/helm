@@ -8,7 +8,7 @@ fullnameOverride: ""
 global:
   context: amazon-watcher
   domain:
-    ui: amazon-watcher.local
+    ui: ui.amazon-watcher.local
     backend: api.amazon-watcher.local
 
 # Database Configuration
@@ -235,9 +235,10 @@ screenshot:
 
 # Kubernetes Ingress Configuration
 # Works with any ingress controller (NGINX, Traefik, etc.)
+# Note: Ingress resources are only created if both enabled=true AND className is set
 ingress:
   enabled: true
-  className: ""  # Set to your ingress controller class (e.g., "nginx", "traefik")
+  className: "nginx"  # Set to your ingress controller class (e.g., "nginx", "traefik"). If empty, Ingress resources will not be created.
   
   # TLS/SSL Configuration
   tls:

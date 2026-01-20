@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled }}
+{{- if and .Values.ingress.enabled .Values.ingress.className }}
 {{- if .Values.backend.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -8,14 +8,10 @@ metadata:
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
-  {{- if .Values.ingress.className }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-  {{- end }}
 spec:
-  {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
@@ -43,14 +39,10 @@ metadata:
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: ui
-  {{- if .Values.ingress.className }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-  {{- end }}
 spec:
-  {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:

@@ -14,7 +14,7 @@ DEFAULT_NAMESPACE="automated"
 DEFAULT_APP_NAME="prod"
 DEFAULT_PROJECT_NAME="zabbix"
 DEFAULT_REPO_URL="git@github.com:Maborak-Technologies-Inc/helm.git"
-DEFAULT_CHART_PATH="charts/amazon-watcher-backend"
+DEFAULT_CHART_PATH="charts/amazon-watcher-stack"
 DEFAULT_SSH_KEY_PATH="${HOME}/.ssh/id_rsa_argocd"
 ARGOCD_PORT=8080
 API_PORT=9000
@@ -364,7 +364,7 @@ install_amazon_watcher_backend() {
     
     # Step 6: Wait for pods to be ready
     print_info "Waiting for pods to be ready..."
-    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+    HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
     kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE} -n ${NAMESPACE} --timeout=300s || print_warn "Pod not ready yet"
     
     # Display status
@@ -375,7 +375,7 @@ install_amazon_watcher_backend() {
     echo -e "${GREEN}========================================${NC}"
     echo ""
     echo -e "${BLUE}Access Amazon Watcher Backend API:${NC}"
-    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+    HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
     echo ""
     echo -e "${GREEN}Option 1: Using kubectl proxy (Recommended - single command for all services)${NC}"
     echo "  1. Start kubectl proxy in a separate terminal:"
@@ -451,7 +451,7 @@ uninstall_amazon_watcher_backend() {
     
     # Step 2: Stop port-forward
     print_info "Stopping port-forward..."
-    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+    HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
     pkill -f "port-forward.*${HELM_RELEASE}" 2>/dev/null || true
     
     # Step 3: Delete namespace (this will delete all resources)
@@ -498,7 +498,7 @@ show_status() {
     
     # Check pods
     if kubectl get namespace ${NAMESPACE} &> /dev/null; then
-        HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+        HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
         echo "Pods:"
         kubectl get pods -n ${NAMESPACE} -l app=${HELM_RELEASE}
         echo ""
