@@ -1,0 +1,22 @@
+{{- if .Values.screenshot.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "amazon-watcher-stack.screenshot.serviceName" . }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: screenshot
+spec:
+  type: {{ .Values.screenshot.service.type }}
+  ports:
+    - port: {{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.screenshot.service.type "NodePort") .Values.screenshot.service.nodePort }}
+      nodePort: {{ .Values.screenshot.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "amazon-watcher-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: screenshot
+{{- end }}

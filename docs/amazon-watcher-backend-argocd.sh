@@ -364,7 +364,8 @@ install_amazon_watcher_backend() {
     
     # Step 6: Wait for pods to be ready
     print_info "Waiting for pods to be ready..."
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=${APP_NAME} -n ${NAMESPACE} --timeout=300s || print_warn "Pod not ready yet"
+    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+    kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE} -n ${NAMESPACE} --timeout=300s || print_warn "Pod not ready yet"
     
     # Display status
     print_info "Installation complete!"
@@ -374,23 +375,24 @@ install_amazon_watcher_backend() {
     echo -e "${GREEN}========================================${NC}"
     echo ""
     echo -e "${BLUE}Access Amazon Watcher Backend API:${NC}"
+    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
     echo ""
     echo -e "${GREEN}Option 1: Using kubectl proxy (Recommended - single command for all services)${NC}"
     echo "  1. Start kubectl proxy in a separate terminal:"
     echo -e "     ${GREEN}kubectl proxy${NC}"
     echo ""
     echo "  2. Access API via proxy:"
-    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${APP_NAME}:${API_PORT}/proxy/${NC}"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${HELM_RELEASE}:${API_PORT}/proxy/${NC}"
     echo ""
     echo "  3. Health endpoint:"
-    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${APP_NAME}:${API_PORT}/proxy/health${NC}"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${HELM_RELEASE}:${API_PORT}/proxy/health${NC}"
     echo ""
     echo "  4. API documentation:"
-    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${APP_NAME}:${API_PORT}/proxy/docs${NC}"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${HELM_RELEASE}:${API_PORT}/proxy/docs${NC}"
     echo ""
     echo -e "${GREEN}Option 2: Using port-forward (Direct access)${NC}"
     echo "  1. Run port-forward in a separate terminal:"
-    echo -e "     ${GREEN}kubectl port-forward svc/${APP_NAME} -n ${NAMESPACE} ${API_PORT}:${API_PORT}${NC}"
+    echo -e "     ${GREEN}kubectl port-forward svc/${HELM_RELEASE} -n ${NAMESPACE} ${API_PORT}:${API_PORT}${NC}"
     echo ""
     echo "  2. Open your browser and navigate to:"
     echo -e "     ${GREEN}http://localhost:${API_PORT}${NC}"
@@ -406,7 +408,7 @@ install_amazon_watcher_backend() {
     echo -e "  • Check status: ${GREEN}kubectl get pods -n ${NAMESPACE}${NC}"
     echo -e "  • View ArgoCD app: ${GREEN}argocd app get ${APP_NAME}${NC}"
     echo -e "  • Sync app: ${GREEN}argocd app sync ${APP_NAME}${NC}"
-    echo -e "  • View logs: ${GREEN}kubectl logs -n ${NAMESPACE} -l app.kubernetes.io/name=${APP_NAME}${NC}"
+    echo -e "  • View logs: ${GREEN}kubectl logs -n ${NAMESPACE} -l app=${HELM_RELEASE}${NC}"
     echo ""
 }
 
@@ -449,7 +451,8 @@ uninstall_amazon_watcher_backend() {
     
     # Step 2: Stop port-forward
     print_info "Stopping port-forward..."
-    pkill -f "port-forward.*${APP_NAME}" 2>/dev/null || true
+    HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
+    pkill -f "port-forward.*${HELM_RELEASE}" 2>/dev/null || true
     
     # Step 3: Delete namespace (this will delete all resources)
     print_info "Deleting namespace '${NAMESPACE}'..."
@@ -495,16 +498,17 @@ show_status() {
     
     # Check pods
     if kubectl get namespace ${NAMESPACE} &> /dev/null; then
+        HELM_RELEASE="amazon-watcher-backend${APP_NAME}"
         echo "Pods:"
-        kubectl get pods -n ${NAMESPACE} -l app.kubernetes.io/name=${APP_NAME}
+        kubectl get pods -n ${NAMESPACE} -l app=${HELM_RELEASE}
         echo ""
         
         echo "Services:"
-        kubectl get svc -n ${NAMESPACE} -l app.kubernetes.io/name=${APP_NAME}
+        kubectl get svc -n ${NAMESPACE} -l app=${HELM_RELEASE}
         echo ""
         
         echo "PersistentVolumeClaims:"
-        kubectl get pvc -n ${NAMESPACE} -l app.kubernetes.io/name=${APP_NAME} 2>/dev/null || echo "  No PVCs found"
+        kubectl get pvc -n ${NAMESPACE} -l app=${HELM_RELEASE} 2>/dev/null || echo "  No PVCs found"
     else
         print_warn "Namespace '${NAMESPACE}' does not exist"
     fi

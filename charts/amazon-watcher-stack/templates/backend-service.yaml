@@ -1,0 +1,22 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "amazon-watcher-stack.backend.serviceName" . }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+    - port: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.backend.service.type "NodePort") .Values.backend.service.nodePort }}
+      nodePort: {{ .Values.backend.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "amazon-watcher-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+{{- end }}

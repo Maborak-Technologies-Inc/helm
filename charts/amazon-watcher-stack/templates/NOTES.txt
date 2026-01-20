@@ -1,0 +1,63 @@
+1. Get the application URLs by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ui.enabled }}
+  UI:     http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.global.domain.ui }}
+{{- end }}
+{{- if .Values.backend.enabled }}
+  Backend: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.global.domain.backend }}
+{{- end }}
+{{- else }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "amazon-watcher-stack.fullname" . }}-ui)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "UI:     http://$NODE_IP:$NODE_PORT"
+{{- end }}
+
+2. Database connection details:
+{{- if .Values.database.enabled }}
+  Host:     {{ include "amazon-watcher-stack.db.serviceName" . }}
+  Port:     {{ .Values.database.postgres.port }}
+  Database: {{ .Values.database.postgres.db }}
+  Username: {{ .Values.database.postgres.user }}
+  Password: (stored in secret {{ include "amazon-watcher-stack.fullname" . }}-db-secret)
+{{- end }}
+
+3. To retrieve secrets:
+{{- if .Values.database.enabled }}
+  Database Password:
+    kubectl get secret {{ include "amazon-watcher-stack.fullname" . }}-db-secret -n {{ .Release.Namespace }} -o jsonpath="{.data.postgres-password}" | base64 -d && echo
+{{- end }}
+{{- if .Values.backend.enabled }}
+  JWT Secret:
+    kubectl get secret {{ include "amazon-watcher-stack.fullname" . }}-backend-secret -n {{ .Release.Namespace }} -o jsonpath="{.data.jwt-secret}" | base64 -d && echo
+{{- end }}
+
+4. Check pod status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+5. View logs:
+{{- if .Values.backend.enabled }}
+  Backend:  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=backend --tail=100 -f
+{{- end }}
+{{- if .Values.ui.enabled }}
+  UI:       kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=ui --tail=100 -f
+{{- end }}
+{{- if .Values.screenshot.enabled }}
+  Screenshot: kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=screenshot --tail=100 -f
+{{- end }}
+{{- if .Values.database.enabled }}
+  Database: kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=database --tail=100 -f
+{{- end }}
+
+6. Troubleshooting:
+  - Check service endpoints: kubectl get endpoints -n {{ .Release.Namespace }}
+  - Check persistent volumes: kubectl get pvc -n {{ .Release.Namespace }}
+  - Describe a pod: kubectl describe pod <pod-name> -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+7. Ingress Notes:
+   - Using standard Kubernetes Ingress
+   - Works with any ingress controller (NGINX, Traefik, etc.)
+   - Ensure your ingress controller is properly configured
+   - Set ingress.className in values.yaml to match your ingress controller
+   - TLS certificates can be managed with cert-manager or manually created
+{{- end }}

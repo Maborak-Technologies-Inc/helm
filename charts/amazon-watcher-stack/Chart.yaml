@@ -1,0 +1,14 @@
+apiVersion: v2
+name: amazon-watcher-stack
+description: A Helm chart for deploying the complete Amazon Watcher Stack (Backend, UI, Screenshot service, Database, and Ingress routing)
+type: application
+version: 0.1.0
+appVersion: "0.1"
+keywords:
+  - amazon
+  - watcher
+  - monitoring
+  - price-tracking
+maintainers:
+  - name: maborak
+    email: maborak@maborak.com

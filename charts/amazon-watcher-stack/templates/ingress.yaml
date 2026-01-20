@@ -1,0 +1,72 @@
+{{- if .Values.ingress.enabled }}
+{{- if .Values.backend.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.ingress.className }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain.backend }}
+      secretName: {{ include "amazon-watcher-stack.fullname" . }}-backend-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.global.domain.backend | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "amazon-watcher-stack.backend.serviceName" . }}
+                port:
+                  number: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+{{- end }}
+{{- if .Values.ui.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-ui
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+  {{- if .Values.ingress.className }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain.ui }}
+      secretName: {{ include "amazon-watcher-stack.fullname" . }}-ui-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.global.domain.ui | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "amazon-watcher-stack.ui.serviceName" . }}
+                port:
+                  number: 80
+{{- end }}
+{{- end }}

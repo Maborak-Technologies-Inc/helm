@@ -1,0 +1,122 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-db
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "amazon-watcher-stack.db.serviceName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "amazon-watcher-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      # PostgreSQL needs to run as postgres user (UID 999)
+      securityContext:
+        fsGroup: 999
+      # Init container to fix permissions on the data directory
+      initContainers:
+        - name: init-db-permissions
+          image: alpine:latest
+          command: ['sh', '-c']
+          args:
+            - |
+              chown -R 999:999 {{ .Values.database.postgres.dataPath }}
+              chmod 700 {{ .Values.database.postgres.dataPath }}
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.database.postgres.dataPath }}
+      containers:
+        - name: postgres
+          image: {{ include "amazon-watcher-stack.db.image" . }}
+          imagePullPolicy: Always
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.database.postgres.db | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.database.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
+                  key: postgres-password
+            - name: PGDATA
+              value: {{ .Values.database.postgres.dataPath | quote }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.database.postgres.port }}
+              protocol: TCP
+          {{- if .Values.database.healthCheck.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgres.user }}
+            initialDelaySeconds: {{ .Values.database.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.database.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.database.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.database.healthCheck.failureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgres.user }}
+            initialDelaySeconds: {{ .Values.database.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.database.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.database.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.database.healthCheck.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.database.postgres.dataPath }}
+          # PostgreSQL runs as postgres user (UID 999)
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- range .Values.database.storage.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- if .Values.database.storage.storageClassName }}
+        storageClassName: {{ .Values.database.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.storage.size | quote }}
+{{- end }}
