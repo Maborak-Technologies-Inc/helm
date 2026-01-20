@@ -1,0 +1,24 @@
+{{- if and .Values.screenshot.enabled .Values.screenshot.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-screenshot
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: screenshot
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.screenshot.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.screenshot.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.screenshot.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.screenshot.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: screenshot
+{{- end }}

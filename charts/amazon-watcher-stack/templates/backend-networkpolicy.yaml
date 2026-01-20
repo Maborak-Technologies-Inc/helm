@@ -1,0 +1,67 @@
+{{- if and .Values.backend.enabled .Values.backend.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if .Values.backend.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml .Values.backend.networkPolicy.ingress | nindent 4 }}
+  {{- else }}
+  # Default: Allow ingress from UI and Ingress controller
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ui
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+  {{- end }}
+  {{- if .Values.backend.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.backend.networkPolicy.egress | nindent 4 }}
+  {{- else }}
+  # Default: Allow egress to database and screenshot service
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: database
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: screenshot
+      ports:
+        - protocol: TCP
+          port: 5432  # Database
+        - protocol: TCP
+          port: {{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}  # Screenshot
+    - to:
+        namespaceSelector: {}  # Allow DNS and other cluster services
+      ports:
+        - protocol: UDP
+          port: 53  # DNS
+        - protocol: TCP
+          port: 443  # HTTPS for external APIs
+  {{- end }}
+{{- end }}

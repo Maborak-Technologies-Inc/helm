@@ -134,6 +134,16 @@ backend:
     size: 5Gi
     accessModes:
       - ReadWriteOnce
+  # Pod Disruption Budget configuration
+  podDisruptionBudget:
+    enabled: false  # Set to true to enable PDB
+    # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
+    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+  # Network Policy configuration
+  networkPolicy:
+    enabled: false  # Set to true to enable NetworkPolicy
+    # ingress: []  # Custom ingress rules (if not provided, defaults are used)
+    # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
     revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
@@ -240,6 +250,16 @@ ui:
     VITE_PRICE_HISTORY_PAGE_SIZE: "10"
     VITE_DEBUG_MODE: "true"
     VITE_LOG_LEVEL: "info"
+  # Pod Disruption Budget configuration
+  podDisruptionBudget:
+    enabled: false  # Set to true to enable PDB
+    # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
+    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+  # Network Policy configuration
+  networkPolicy:
+    enabled: false  # Set to true to enable NetworkPolicy
+    # ingress: []  # Custom ingress rules (if not provided, defaults are used)
+    # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
     revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
@@ -435,6 +455,37 @@ screenshot:
     APT_BROWSER_CAPTCHA_RETRY_DELAY_MAX: "4.0"
     APT_BROWSER_NAVIGATION_MAX_RETRIES: "3"
     APT_BROWSER_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+  # Pod Disruption Budget configuration
+  podDisruptionBudget:
+    enabled: false  # Set to true to enable PDB
+    # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
+    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+  # Network Policy configuration
+  networkPolicy:
+    enabled: false  # Set to true to enable NetworkPolicy
+    # ingress: []  # Custom ingress rules (if not provided, defaults are used)
+    # egress: []  # Custom egress rules (if not provided, defaults are used)
+
+# Istio Service Mesh Configuration
+# Required for Argo Rollouts traffic splitting with canary deployments
+istio:
+  enabled: false  # Set to true if Istio is installed in your cluster
+  virtualService:
+    enabled: false  # Set to true to create VirtualService for traffic routing
+    # Custom routes (if not provided, default routes for Rollout canary are used)
+    # routes: []
+  destinationRule:
+    enabled: false  # Set to true to create DestinationRule for canary subsets
+    # Custom traffic policy (optional)
+    # trafficPolicy: {}
+  telemetry:
+    enabled: false  # Set to true to create Telemetry resources for observability
+    # Custom metrics configuration (optional)
+    # metrics: []
+    # Custom access logging (optional)
+    # accessLogging: []
+    # Custom tracing (optional)
+    # tracing: []
 
 # Kubernetes Ingress Configuration
 # Works with any ingress controller (NGINX, Traefik, etc.)

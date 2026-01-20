@@ -1,0 +1,28 @@
+{{- if and .Values.backend.enabled .Values.istio.enabled .Values.istio.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "amazon-watcher-stack.backend.serviceName" . }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  host: {{ include "amazon-watcher-stack.backend.serviceName" . }}
+  subsets:
+    - name: stable
+      labels:
+        {{- include "amazon-watcher-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    - name: canary
+      labels:
+        {{- include "amazon-watcher-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+  {{- if .Values.istio.destinationRule.trafficPolicy }}
+  trafficPolicy:
+    {{- toYaml .Values.istio.destinationRule.trafficPolicy | nindent 4 }}
+  {{- end }}
+{{- end }}

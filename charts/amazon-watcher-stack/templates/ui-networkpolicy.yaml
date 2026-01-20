@@ -1,0 +1,57 @@
+{{- if and .Values.ui.enabled .Values.ui.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-ui
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ui
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if .Values.ui.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml .Values.ui.networkPolicy.ingress | nindent 4 }}
+  {{- else }}
+  # Default: Allow ingress from Ingress controller
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+  {{- end }}
+  {{- if .Values.ui.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.ui.networkPolicy.egress | nindent 4 }}
+  {{- else }}
+  # Default: Allow egress to backend service
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+    - to:
+        namespaceSelector: {}  # Allow DNS and other cluster services
+      ports:
+        - protocol: UDP
+          port: 53  # DNS
+        - protocol: TCP
+          port: 443  # HTTPS for external APIs
+  {{- end }}
+{{- end }}

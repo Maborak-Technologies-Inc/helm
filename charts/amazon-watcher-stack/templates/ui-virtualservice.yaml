@@ -1,0 +1,37 @@
+{{- if and .Values.ui.enabled .Values.istio.enabled .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "amazon-watcher-stack.ui.serviceName" . }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  hosts:
+    - {{ include "amazon-watcher-stack.ui.serviceName" . }}
+    {{- if .Values.global.domain.ui }}
+    - {{ .Values.global.domain.ui }}
+    {{- end }}
+  http:
+    {{- if .Values.istio.virtualService.routes }}
+    {{- toYaml .Values.istio.virtualService.routes | nindent 4 }}
+    {{- else }}
+    # Default route for Argo Rollouts canary traffic splitting
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ include "amazon-watcher-stack.ui.serviceName" . }}
+            subset: stable
+          weight: 100
+        - destination:
+            host: {{ include "amazon-watcher-stack.ui.serviceName" . }}
+            subset: canary
+          weight: 0
+    {{- end }}
+{{- end }}
