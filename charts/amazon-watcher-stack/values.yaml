@@ -43,7 +43,7 @@ database:
 # Backend Service Configuration
 backend:
   enabled: true
-  replicas: 1
+  replicas: 3
   image:
     repository: maborak/platform
     tag: "apt-backend-0.1"
