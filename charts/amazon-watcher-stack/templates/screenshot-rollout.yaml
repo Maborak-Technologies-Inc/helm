@@ -15,6 +15,9 @@ spec:
   # Otherwise, use the configured replicas value
   replicas: {{ if and .Values.screenshot.autoscaling.enabled .Values.screenshot.autoscaling.minReplicas }}{{ .Values.screenshot.autoscaling.minReplicas }}{{ else }}{{ .Values.screenshot.replicas }}{{ end }}
   revisionHistoryLimit: {{ .Values.screenshot.rollout.revisionHistoryLimit | default 10 }}
+  {{- if .Values.screenshot.rollout.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.screenshot.rollout.progressDeadlineSeconds }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}

@@ -1,0 +1,44 @@
+[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/initContainers",
+    "value": [
+      {
+        "name": "rollout-extension-installer",
+        "image": "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
+        "env": [
+          {
+            "name": "EXTENSION_URL",
+            "value": "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.7/extension.tar"
+          }
+        ],
+        "volumeMounts": [
+          {
+            "name": "extensions",
+            "mountPath": "/tmp/extensions"
+          }
+        ],
+        "securityContext": {
+          "runAsUser": 999,
+          "allowPrivilegeEscalation": false
+        }
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/volumeMounts/-",
+    "value": {
+      "name": "extensions",
+      "mountPath": "/tmp/extensions"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/volumes/-",
+    "value": {
+      "name": "extensions",
+      "emptyDir": {}
+    }
+  }
+]

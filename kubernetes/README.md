@@ -187,20 +187,29 @@ The Argo Rollouts UI plugin provides a visual interface in ArgoCD for viewing an
 
 #### Install the UI Plugin
 
+**Important**: ArgoCD UI extensions must be installed via initContainer, not ConfigMap. The extension files must be placed in `/tmp/extensions/` inside the ArgoCD server pod.
+
+**Method 1: Using the installation script (Recommended)**
+
 ```bash
-# Install Argo Rollouts UI plugin in ArgoCD
-kubectl patch configmap argocd-cm -n argocd --type merge -p '{
-  "data": {
-    "ui.plugins": "[{\"name\": \"rollouts\",\"src\": \"https://argoproj.github.io/argo-rollouts/plugin\"}]"
-  }
-}'
+# Run the installation script from the kubernetes directory
+./kubernetes/install-rollout-extension.sh
+```
 
-# Restart ArgoCD server to load the plugin
-kubectl rollout restart deployment argocd-server -n argocd
+**Method 2: Manual patch using JSON file**
 
-# Wait for ArgoCD server to be ready
+```bash
+# Apply the patch from the version-controlled JSON file
+kubectl patch deployment argocd-server -n argocd --type='json' -p="$(cat kubernetes/argocd-rollout-extension-patch.json)"
+
+# Wait for ArgoCD server to restart and be ready
+kubectl rollout status deployment/argocd-server -n argocd --timeout=120s
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
 ```
+
+**Configuration Files:**
+- `kubernetes/argocd-rollout-extension-patch.json` - JSON patch for ArgoCD server deployment
+- `kubernetes/install-rollout-extension.sh` - Installation script
 
 #### Access the Rollouts UI
 
@@ -220,8 +229,8 @@ kubectl get pods -n argo-rollouts
 # Check Rollout CRD
 kubectl get crd rollouts.argoproj.io
 
-# Verify UI plugin is configured
-kubectl get configmap argocd-cm -n argocd -o jsonpath='{.data.ui\.plugins}'
+# Verify extension is installed (check initContainer in pod)
+kubectl describe pod -n argocd -l app.kubernetes.io/name=argocd-server | grep -A 5 "rollout-extension-installer"
 ```
 
 ### Usage in Helm Chart
@@ -668,6 +677,25 @@ Key sections:
 - `screenshot.rollout`: Argo Rollout configuration
 - `screenshot.autoscaling`: HPA configuration
 
+### ArgoCD Rollout Extension Configuration
+
+**Location**: `kubernetes/argocd-rollout-extension-patch.json`
+
+This JSON patch file contains the configuration for installing the Argo Rollouts UI extension in ArgoCD. It adds an initContainer to the ArgoCD server deployment.
+
+**Installation Script**: `kubernetes/install-rollout-extension.sh`
+
+A bash script that applies the patch and verifies the installation.
+
+**Usage**:
+```bash
+# Install using the script
+./kubernetes/install-rollout-extension.sh
+
+# Or apply patch manually
+kubectl patch deployment argocd-server -n argocd --type='json' -p="$(cat kubernetes/argocd-rollout-extension-patch.json)"
+```
+
 ---
 
 ## Quick Reference
@@ -689,8 +717,7 @@ kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 
 # 3a. Argo Rollouts UI Plugin (optional but recommended)
-kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"ui.plugins":"[{\"name\":\"rollouts\",\"src\":\"https://argoproj.github.io/argo-rollouts/plugin\"}]"}}'
-kubectl rollout restart deployment argocd-server -n argocd
+./kubernetes/install-rollout-extension.sh
 
 # 4. Metrics Server (for HPA)
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml

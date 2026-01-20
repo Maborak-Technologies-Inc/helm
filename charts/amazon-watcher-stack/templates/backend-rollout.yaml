@@ -1,6 +1,6 @@
 {{- if .Values.backend.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: {{ include "amazon-watcher-stack.fullname" . }}-backend
   labels:
@@ -11,7 +11,13 @@ metadata:
     {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ .Values.backend.replicas }}
+  # When HPA is enabled, use minReplicas as initial count (HPA will manage scaling)
+  # Otherwise, use the configured replicas value
+  replicas: {{ if and .Values.backend.autoscaling.enabled .Values.backend.autoscaling.minReplicas }}{{ .Values.backend.autoscaling.minReplicas }}{{ else }}{{ .Values.backend.replicas }}{{ end }}
+  revisionHistoryLimit: {{ .Values.backend.rollout.revisionHistoryLimit | default 10 }}
+  {{- if .Values.backend.rollout.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.backend.rollout.progressDeadlineSeconds }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
@@ -113,4 +119,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if .Values.backend.rollout.strategy }}
+  strategy:
+    {{- toYaml .Values.backend.rollout.strategy | nindent 4 }}
+  {{- else }}
+  # Default to simple canary strategy (equivalent to rolling update)
+  strategy:
+    canary:
+      steps: []
+  {{- end }}
 {{- end }}
