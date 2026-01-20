@@ -762,6 +762,95 @@ kubectl delete -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/rel
 
 ---
 
+## Backend CLI Job
+
+### Overview
+
+For running one-time CLI commands in the backend (like database migrations), use the Helm-based Job template. This ensures the Job uses the same environment variables as your backend Rollout, automatically picking up any changes from `values.yaml`.
+
+### Usage
+
+**Method 1: Using the helper script (Recommended)**
+
+```bash
+# Run a command using the Helm template
+./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+
+# Or with custom namespace/release
+NAMESPACE=automated RELEASE_NAME=test-apt ./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
+```
+
+**Method 2: Using Helm directly**
+
+```bash
+# Generate and apply Job YAML
+helm template test-apt ./charts/amazon-watcher-stack \
+  --set backend.cliJob.enabled=true \
+  --set backend.cliJob.command="python manage.py migrate" \
+  | kubectl apply -f -
+
+# Check Job status
+kubectl get jobs -n automated -l app.kubernetes.io/component=backend-cli
+
+# View logs
+kubectl logs -n automated -l app.kubernetes.io/component=backend-cli --tail=100
+```
+
+**Method 3: Enable in values.yaml (for GitOps)**
+
+```yaml
+backend:
+  cliJob:
+    enabled: true
+    command: "python manage.py migrate"
+    timestamp: "20260120120000"  # Optional: custom timestamp
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 3600
+```
+
+### Benefits
+
+- **Dynamic Environment Variables**: Automatically uses all env vars from `values.yaml`
+- **Always in Sync**: When you add/change env vars in `values.yaml`, the Job picks them up
+- **Same Configuration**: Uses the same image, secrets, and resources as backend Rollout
+- **Safe from Rollouts**: Job runs independently, won't be killed by pod restarts
+
+### Configuration
+
+**Location**: `charts/amazon-watcher-stack/templates/backend-cli-job.yaml`
+
+The Job template uses the same helpers as the backend Rollout:
+- `amazon-watcher-stack.backend.env` - All environment variables from `values.yaml`
+- `amazon-watcher-stack.backend.image` - Same image as backend
+- `amazon-watcher-stack.fullname` - Consistent naming
+- Same secrets, resources, and configuration
+
+### Examples
+
+```bash
+# Database migration
+./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+
+# Alembic migration
+./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
+
+# Custom Python script
+./kubernetes/run-backend-cli-helm.sh "python scripts/update_data.py"
+
+# Shell command
+./kubernetes/run-backend-cli-helm.sh "ls -la /app"
+```
+
+### Cleanup
+
+Jobs are automatically deleted after `ttlSecondsAfterFinished` (default: 1 hour). To manually delete:
+
+```bash
+kubectl delete job -n automated -l app.kubernetes.io/component=backend-cli
+```
+
+---
+
 ## Last Updated
 
 January 20, 2026

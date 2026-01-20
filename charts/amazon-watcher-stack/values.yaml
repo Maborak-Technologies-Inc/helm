@@ -44,6 +44,15 @@ database:
 backend:
   enabled: true
   replicas: 3
+  # CLI Job configuration (for running one-time commands)
+  cliJob:
+    enabled: true  # Set to true and provide command to create a Job
+    command: "python cli.py monitor run --batch-limit=500 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run (e.g., "python manage.py migrate")
+    timestamp: ""  # Optional: custom timestamp for Job name (auto-generated if empty)
+    backoffLimit: 1  # Number of retries before marking Job as failed
+    ttlSecondsAfterFinished: 3600  # Auto-delete Job after 1 hour
+    waitForBackend: true  # Wait for backend service to be ready before executing command
+    maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
   image:
     repository: maborak/platform
     tag: "apt-backend-0.1"
@@ -103,7 +112,7 @@ backend:
     APT_BACKEND_RATE_LIMIT_BYPASS_KEY: ""
     APT_BACKEND_RATE_LIMIT_EXCLUDED_PATHS: "/docs,/redoc,/openapi.json,/favicon.ico,/health"
     APT_BACKEND_RATE_LIMIT_BYPASS_PATHS: ""
-    APT_BACKEND_MONITOR_ENABLED: "false"
+    APT_BACKEND_MONITOR_ENABLED: "true"
     APT_BACKEND_MONITOR_INTERVAL: "3600"
     APT_BACKEND_MONITOR_BATCH_SIZE: "5"
     APT_BACKEND_PRICE_HISTORY_PERIODIC_SECONDS: "3600"

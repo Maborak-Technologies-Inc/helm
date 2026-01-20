@@ -1,0 +1,109 @@
+{{- if .Values.backend.cliJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli-{{ .Values.backend.cliJob.timestamp | default (now | date "20060102150405") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend-cli
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  backoffLimit: {{ .Values.backend.cliJob.backoffLimit | default 1 }}
+  ttlSecondsAfterFinished: {{ .Values.backend.cliJob.ttlSecondsAfterFinished | default 3600 }}
+  template:
+    metadata:
+      labels:
+        {{- include "amazon-watcher-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend-cli
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "amazon-watcher-stack.fullname" . }}
+      {{- end }}
+      restartPolicy: Never
+      {{- if .Values.backend.cliJob.waitForBackend }}
+      initContainers:
+      - name: wait-for-backend
+        image: busybox:1.36
+        command: ['sh', '-c']
+        args:
+          - |
+            echo "Waiting for backend service to be ready..."
+            BACKEND_SERVICE="{{ include "amazon-watcher-stack.backend.serviceName" . }}"
+            BACKEND_PORT="{{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}"
+            MAX_WAIT={{ .Values.backend.cliJob.maxWaitSeconds | default 300 }}
+            ELAPSED=0
+            
+            # Wait for service to be available
+            until nc -z $BACKEND_SERVICE $BACKEND_PORT; do
+              if [ $ELAPSED -ge $MAX_WAIT ]; then
+                echo "❌ Timeout: Backend service not available after ${MAX_WAIT}s"
+                exit 1
+              fi
+              echo "Waiting for $BACKEND_SERVICE:$BACKEND_PORT... (${ELAPSED}s/${MAX_WAIT}s)"
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+            done
+            
+            echo "✅ Backend service is ready at $BACKEND_SERVICE:$BACKEND_PORT"
+      {{- end }}
+      containers:
+      - name: backend
+        image: {{ include "amazon-watcher-stack.backend.image" . }}
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        workingDir: /app
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -e
+            echo "Starting backend CLI command..."
+            echo "Command: {{ .Values.backend.cliJob.command }}"
+            echo "---"
+            {{ .Values.backend.cliJob.command }}
+            echo "---"
+            echo "Command completed successfully"
+        env:
+          - name: PYTHONPATH
+            value: "/app"
+          # Special env vars (from secrets or computed) - same as backend rollout
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
+                key: postgres-password
+          - name: APT_BACKEND_JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "amazon-watcher-stack.fullname" . }}-backend-secret
+                key: jwt-secret
+          # Computed DATABASE_URL (use from env if set, otherwise auto-generate)
+          - name: APT_BACKEND_DATABASE_URL
+            value: {{ .Values.backend.env.APT_BACKEND_DATABASE_URL | default (include "amazon-watcher-stack.db.url" .) | quote }}
+          # Computed SCREENSHOT_SERVICE_URL (use from env if set, otherwise auto-generate)
+          - name: APT_BACKEND_SCREENSHOT_SERVICE_URL
+            value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
+          # Iterate over all env vars from values.yaml - same as backend rollout
+          {{- include "amazon-watcher-stack.backend.env" . | nindent 10 }}
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}
+        {{- with .Values.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
