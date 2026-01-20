@@ -183,7 +183,7 @@ backend:
   # Horizontal Pod Autoscaler configuration
   autoscaling:
     enabled: false  # Set to true to enable HPA
-    minReplicas: 1
+    minReplicas: 5
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
     # targetMemoryUtilizationPercentage: 80  # Optional: enable memory-based scaling
