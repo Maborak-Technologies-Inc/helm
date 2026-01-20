@@ -204,7 +204,8 @@ screenshot:
   # Argo Rollout configuration
   rollout:
     revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
-    # Deployment strategy (optional - defaults to rollingUpdate)
+    # Deployment strategy (optional - defaults to simple canary with no steps)
+    # If not specified, uses canary strategy with empty steps (rolling update behavior)
     # strategy:
     #   canary:
     #     steps:

@@ -82,10 +82,9 @@ spec:
   strategy:
     {{- toYaml .Values.screenshot.rollout.strategy | nindent 4 }}
   {{- else }}
-  # Default to rolling update if no strategy specified
+  # Default to simple canary strategy (equivalent to rolling update)
   strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    canary:
+      steps: []
   {{- end }}
 {{- end }}
