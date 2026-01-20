@@ -1,6 +1,6 @@
 {{- if .Values.screenshot.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: {{ include "amazon-watcher-stack.fullname" . }}-screenshot
   labels:
@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/component: screenshot
 spec:
   replicas: {{ .Values.screenshot.replicas }}
+  revisionHistoryLimit: {{ .Values.screenshot.rollout.revisionHistoryLimit | default 10 }}
   selector:
     matchLabels:
       {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
@@ -77,4 +78,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if .Values.screenshot.rollout.strategy }}
+  strategy:
+    {{- toYaml .Values.screenshot.rollout.strategy | nindent 4 }}
+  {{- else }}
+  # Default to rolling update if no strategy specified
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  {{- end }}
 {{- end }}

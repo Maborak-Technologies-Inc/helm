@@ -1,0 +1,37 @@
+{{- if and .Values.screenshot.enabled .Values.screenshot.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-screenshot
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: screenshot
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ include "amazon-watcher-stack.fullname" . }}-screenshot
+  minReplicas: {{ .Values.screenshot.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.screenshot.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.screenshot.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.screenshot.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.screenshot.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.screenshot.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.screenshot.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.screenshot.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}
