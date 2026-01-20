@@ -38,6 +38,41 @@ helm.sh/chart: {{ include "amazon-watcher-stack.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.argocd.labels }}
+{{- range $key, $value := .Values.argocd.labels }}
+{{- if $value }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.argocd.tags }}
+{{- range $key, $value := .Values.argocd.tags }}
+{{- if $value }}
+{{- if eq $key "environment" }}
+app.maborak.com/environment: {{ $value | quote }}
+{{- else if eq $key "team" }}
+app.maborak.com/team: {{ $value | quote }}
+{{- else if eq $key "project" }}
+app.maborak.com/project: {{ $value | quote }}
+{{- else }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+ArgoCD annotations
+*/}}
+{{- define "amazon-watcher-stack.argocd.annotations" -}}
+{{- if .Values.argocd.annotations }}
+{{- range $key, $value := .Values.argocd.annotations }}
+{{- if $value }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{/*

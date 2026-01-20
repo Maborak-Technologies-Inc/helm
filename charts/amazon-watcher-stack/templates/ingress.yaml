@@ -10,6 +10,9 @@ metadata:
     app.kubernetes.io/component: backend
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+    {{- if .Values.argocd.annotations }}
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls.enabled }}
@@ -41,6 +44,9 @@ metadata:
     app.kubernetes.io/component: ui
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+    {{- if .Values.argocd.annotations }}
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls.enabled }}

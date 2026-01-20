@@ -330,3 +330,59 @@ podAnnotations: {}
 
 # Labels
 podLabels: {}
+
+# ArgoCD Configuration
+argocd:
+  # ArgoCD annotations for sync control and metadata
+  annotations:
+    # Application metadata (similar to Upwork pattern)
+    app.maborak.com/contact: ""  # e.g., "team@maborak.com"
+    app.maborak.com/created-by: "argo-cd"  # Indicates ArgoCD created this resource
+    app.maborak.com/department: ""  # e.g., "platform", "engineering"
+    app.maborak.com/project: ""  # e.g., "amazon-watcher"
+    
+    # Argo Rollouts notifications (Slack, etc.)
+    # notifications.argoproj.io/subscribe.on-rollout-aborted.slack: "channel-name"
+    # notifications.argoproj.io/subscribe.on-rollout-completed.slack: "channel-name"
+    # notifications.argoproj.io/subscribe.on-rollout-step-completed.slack: "channel-name"
+    # notifications.argoproj.io/subscribe.on-rollout-updated.slack: "channel-name"
+    
+    # Sync control annotations
+    # argocd.argoproj.io/sync-wave: "0"  # Lower numbers sync first
+    # argocd.argoproj.io/sync-options: "Prune=false"  # Comma-separated options
+    # argocd.argoproj.io/hook: "PreSync"  # Hook type: PreSync, PostSync, Sync, Skip
+    # argocd.argoproj.io/hook-weight: "0"  # Hook execution order
+    # argocd.argoproj.io/refresh: "hard"  # Refresh mode: normal, hard
+    # argocd.argoproj.io/compare-options: "IgnoreExtraneous"  # Compare options
+    
+  # Application labels (similar to Upwork pattern)
+  labels:
+    # Standard Kubernetes labels (already included in common labels)
+    # app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/component
+    # app.kubernetes.io/managed-by, app.kubernetes.io/version, app.kubernetes.io/part-of
+    
+    # Organization-specific labels
+    app.maborak.com/bounded-context: ""  # Domain/bounded context
+    app.maborak.com/chart-name: "amazon-watcher-stack"  # Helm chart name
+    app.maborak.com/cluster-name: ""  # Kubernetes cluster name
+    app.maborak.com/environment: "Development"  # Environment: prod, staging, dev
+    app.maborak.com/family: ""  # Technology family: backend, frontend, database
+    app.maborak.com/runtime: ""  # Runtime: eks, gke, aks, docker-desktop
+    app.maborak.com/service-runtime: ""  # Service runtime: nodejs, python, go
+    app.maborak.com/team: ""  # Team name
+    app.maborak.com/tier: ""  # Application tier: T1, T2, T3
+    app.maborak.com/type: ""  # Application type: business, infrastructure, platform
+    
+    # ArgoCD instance label
+    argocd.argoproj.io/instance: ""  # ArgoCD application instance name
+    
+    # Platform-specific labels
+    platform.maborak.com/namespace: ""  # Target namespace
+    # platform.maborak.com/network-policies-version: ""
+    # platform.maborak.com/istio-telemetry-api-flag: ""
+    
+  # Legacy tags (deprecated - use labels instead, but kept for backward compatibility)
+  tags:
+    environment: "Development"  # Maps to app.maborak.com/environment
+    team: ""  # Maps to app.maborak.com/team
+    project: ""  # Maps to app.maborak.com/project

@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: ui
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.ui.replicas }}
   selector:

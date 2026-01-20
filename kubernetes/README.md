@@ -7,10 +7,11 @@ This document describes all the Kubernetes infrastructure components installed a
 1. [MetalLB - LoadBalancer Implementation](#metallb---loadbalancer-implementation)
 2. [NGINX Ingress Controller](#nginx-ingress-controller)
 3. [Argo Rollouts](#argo-rollouts)
-4. [ArgoCD](#argocd)
-5. [Component Integration](#component-integration)
-6. [Verification Commands](#verification-commands)
-7. [Troubleshooting](#troubleshooting)
+4. [Metrics Server](#metrics-server)
+5. [ArgoCD](#argocd)
+6. [Component Integration](#component-integration)
+7. [Verification Commands](#verification-commands)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -175,6 +176,41 @@ kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 ```
 
+### Argo Rollouts UI Plugin
+
+The Argo Rollouts UI plugin provides a visual interface in ArgoCD for viewing and managing Rollout resources. It shows:
+- **Steps Panel**: Canary deployment steps (scale, set weight, pause, headers)
+- **Summary**: Strategy type, current step progress, traffic weights
+- **Containers**: Container images in use
+- **Revisions**: Deployment history with revision IDs
+- **Analysis Runs**: Automated analysis during rollout
+
+#### Install the UI Plugin
+
+```bash
+# Install Argo Rollouts UI plugin in ArgoCD
+kubectl patch configmap argocd-cm -n argocd --type merge -p '{
+  "data": {
+    "ui.plugins": "[{\"name\": \"rollouts\",\"src\": \"https://argoproj.github.io/argo-rollouts/plugin\"}]"
+  }
+}'
+
+# Restart ArgoCD server to load the plugin
+kubectl rollout restart deployment argocd-server -n argocd
+
+# Wait for ArgoCD server to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+```
+
+#### Access the Rollouts UI
+
+1. Open ArgoCD UI: `https://localhost:8080` (via port-forward)
+2. Navigate to your application (e.g., `test` or `test-apt`)
+3. Click the **"ROLLOUT"** tab (appears next to SUMMARY, EVENTS, LOGS tabs)
+4. View rollout progress, steps, revisions, and analysis runs
+
+**Note**: The ROLLOUT tab only appears for applications that use Rollout resources (not standard Deployments).
+
 ### Verification
 
 ```bash
@@ -183,6 +219,9 @@ kubectl get pods -n argo-rollouts
 
 # Check Rollout CRD
 kubectl get crd rollouts.argoproj.io
+
+# Verify UI plugin is configured
+kubectl get configmap argocd-cm -n argocd -o jsonpath='{.data.ui\.plugins}'
 ```
 
 ### Usage in Helm Chart
@@ -219,6 +258,99 @@ screenshot:
 - Progressive delivery
 - Traffic splitting capabilities
 - Integration with service mesh (Istio/Linkerd)
+
+---
+
+## Metrics Server
+
+### Overview
+
+Metrics Server collects resource metrics (CPU and memory) from Kubernetes nodes and pods, exposing them via the Metrics API. It is required for Horizontal Pod Autoscaler (HPA) to function.
+
+### Installation
+
+```bash
+# Install Metrics Server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Wait for Metrics Server to be ready
+kubectl wait --namespace kube-system --for=condition=ready pod --selector=k8s-app=metrics-server --timeout=90s
+```
+
+### Docker Desktop TLS Fix
+
+**Important**: On Docker Desktop Kubernetes, Metrics Server requires a TLS configuration fix due to certificate validation issues with kubelet connections.
+
+**Problem**: Metrics Server fails to scrape metrics with errors like:
+```
+tls: failed to verify certificate: x509: cannot validate certificate for <IP> because it doesn't contain any IP SANs
+```
+
+**Solution**: Patch the Metrics Server deployment to disable TLS verification for kubelet connections:
+
+```bash
+# Patch Metrics Server to disable TLS verification (Docker Desktop only)
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+# Wait for rollout to complete
+kubectl rollout status deployment/metrics-server -n kube-system --timeout=60s
+```
+
+**Note**: This fix is specific to Docker Desktop. Production clusters should use proper TLS certificates.
+
+### Verification
+
+```bash
+# Check Metrics Server pod status
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+
+# Verify Metrics API is available
+kubectl get apiservice v1beta1.metrics.k8s.io
+
+# Test metrics collection
+kubectl top nodes
+kubectl top pods -A
+```
+
+### Usage with HPA
+
+Metrics Server enables HPA to:
+- Monitor CPU and memory utilization
+- Scale pods based on resource metrics
+- Provide real-time metrics via Metrics API
+
+**Example HPA Configuration**:
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: my-app
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+```
+
+### Troubleshooting
+
+**Issue**: HPA shows "unknown" or "unable to get metrics"
+
+**Solutions**:
+1. Verify Metrics Server is running: `kubectl get pods -n kube-system -l k8s-app=metrics-server`
+2. Check Metrics API availability: `kubectl get apiservice v1beta1.metrics.k8s.io`
+3. For Docker Desktop: Apply TLS fix (see above)
+4. Ensure pod resource requests are set (HPA requires requests to calculate utilization)
+5. Check Metrics Server logs: `kubectl logs -n kube-system -l k8s-app=metrics-server`
 
 ---
 
@@ -479,11 +611,23 @@ kubectl describe hpa <hpa-name> -n default
 kubectl get rollout <rollout-name> -n default -o yaml | grep requests
 ```
 
-**Problem**: HPA shows "unknown" metrics
+**Problem**: HPA shows "unknown" metrics or "unable to get metrics"
 
 **Solution**:
-- Install metrics server: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
-- Ensure resource requests are configured in pod spec
+```bash
+# Install Metrics Server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# For Docker Desktop: Apply TLS fix
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+# Verify Metrics Server is working
+kubectl top nodes
+kubectl top pods
+
+# Ensure resource requests are configured in pod spec (required for HPA)
+kubectl get rollout <rollout-name> -o yaml | grep requests
+```
 
 ---
 
@@ -544,8 +688,16 @@ kubectl patch svc ingress-nginx-controller -n ingress-nginx -p '{"spec":{"extern
 kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 
+# 3a. Argo Rollouts UI Plugin (optional but recommended)
+kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"ui.plugins":"[{\"name\":\"rollouts\",\"src\":\"https://argoproj.github.io/argo-rollouts/plugin\"}]"}}'
+kubectl rollout restart deployment argocd-server -n argocd
+
 # 4. Metrics Server (for HPA)
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Docker Desktop TLS fix (required for Docker Desktop)
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+kubectl rollout status deployment/metrics-server -n kube-system
 ```
 
 ### Uninstall Components
@@ -567,6 +719,7 @@ kubectl delete -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/rel
 ## Version Information
 
 - **MetalLB**: v0.14.5
+- **Metrics Server**: Latest (from kubernetes-sigs/metrics-server releases)
 - **NGINX Ingress Controller**: v1.14.1
 - **Argo Rollouts**: Latest (from GitHub releases)
 - **Kubernetes**: v1.31.1
