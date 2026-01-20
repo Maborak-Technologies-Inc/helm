@@ -7,7 +7,9 @@ metadata:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: screenshot
 spec:
-  replicas: {{ .Values.screenshot.replicas }}
+  # When HPA is enabled, use minReplicas as initial count (HPA will manage scaling)
+  # Otherwise, use the configured replicas value
+  replicas: {{ if and .Values.screenshot.autoscaling.enabled .Values.screenshot.autoscaling.minReplicas }}{{ .Values.screenshot.autoscaling.minReplicas }}{{ else }}{{ .Values.screenshot.replicas }}{{ end }}
   revisionHistoryLimit: {{ .Values.screenshot.rollout.revisionHistoryLimit | default 10 }}
   selector:
     matchLabels:

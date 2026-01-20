@@ -220,8 +220,8 @@ screenshot:
     #     autoPromotionEnabled: true
   # Horizontal Pod Autoscaler configuration
   autoscaling:
-    enabled: false
-    minReplicas: 1
+    enabled: true
+    minReplicas: 5
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: null  # Set to enable memory-based scaling
