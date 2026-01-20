@@ -145,22 +145,21 @@ backend:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
         minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
-        # Canary deployment steps (Upwork-style progressive rollout)
+        # Canary deployment steps (progressive rollout)
+        # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
+        # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Scale canary to match traffic weight
-        - setCanaryScale:
-            matchTrafficWeight: true
-        # Step 2: Set initial traffic weight (1%)
+        # Step 1: Set initial traffic weight (1%)
         - setWeight: 1
-        # Step 3: Pause for manual verification (duration: 0 = manual pause)
+        # Step 2: Pause for manual verification (duration: 0 = manual pause)
         - pause:
             duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
-        # Step 4: Set traffic weight to 50%
+        # Step 3: Set traffic weight to 50%
         - setWeight: 50
-        # Step 5: Pause for automated verification (2 minutes)
+        # Step 4: Pause for automated verification (2 minutes)
         - pause:
             duration: 120  # 2 minutes (120 seconds)
-        # Step 6: Complete rollout (100% traffic)
+        # Step 5: Complete rollout (100% traffic)
         - setWeight: 100
         # Optional: Analysis templates for automated verification
         # analysis:
@@ -252,22 +251,21 @@ ui:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
         minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
-        # Canary deployment steps (Upwork-style progressive rollout)
+        # Canary deployment steps (progressive rollout)
+        # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
+        # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Scale canary to match traffic weight
-        - setCanaryScale:
-            matchTrafficWeight: true
-        # Step 2: Set initial traffic weight (1%)
+        # Step 1: Set initial traffic weight (1%)
         - setWeight: 1
-        # Step 3: Pause for manual verification (duration: 0 = manual pause)
+        # Step 2: Pause for manual verification (duration: 0 = manual pause)
         - pause:
             duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
-        # Step 4: Set traffic weight to 50%
+        # Step 3: Set traffic weight to 50%
         - setWeight: 50
-        # Step 5: Pause for automated verification (2 minutes)
+        # Step 4: Pause for automated verification (2 minutes)
         - pause:
             duration: 120  # 2 minutes (120 seconds)
-        # Step 6: Complete rollout (100% traffic)
+        # Step 5: Complete rollout (100% traffic)
         - setWeight: 100
         # Optional: Analysis templates for automated verification
         # analysis:
@@ -346,22 +344,21 @@ screenshot:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
         minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
-        # Canary deployment steps (Upwork-style progressive rollout)
+        # Canary deployment steps (progressive rollout)
+        # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
+        # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Scale canary to match traffic weight
-        - setCanaryScale:
-            matchTrafficWeight: true
-        # Step 2: Set initial traffic weight (1%)
+        # Step 1: Set initial traffic weight (1%)
         - setWeight: 1
-        # Step 3: Pause for manual verification (duration: 0 = manual pause)
+        # Step 2: Pause for manual verification (duration: 0 = manual pause)
         - pause:
             duration: 0  # Manual pause - requires promotion
-        # Step 4: Set traffic weight to 50%
+        # Step 3: Set traffic weight to 50%
         - setWeight: 50
-        # Step 5: Pause for automated verification (2 minutes)
+        # Step 4: Pause for automated verification (2 minutes)
         - pause:
             duration: 120  # 2 minutes
-        # Step 6: Complete rollout (100% traffic)
+        # Step 5: Complete rollout (100% traffic)
         - setWeight: 100
         # Optional: Analysis templates for automated verification
         # analysis:
