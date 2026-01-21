@@ -22,7 +22,7 @@ global:
 
 # Database Configuration
 database:
-  enabled: false
+  enabled: true
   postgres:
     version: "16-alpine"
     db: amazon_watcher
@@ -107,14 +107,19 @@ backend:
   # Backend environment variables (APT_BACKEND_* prefix)
   # All env vars with full names including prefix - no transformation needed
   env:
-    APT_BACKEND_DATABASE_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@192.168.0.27:5551/amazon"  # External database URL
+    APT_BACKEND_DATABASE_URL: ""  # External database URL
+    APT_BACKEND_DB_USE_REPLICA_ENGINE: "false"
+    APT_BACKEND_DB_READ_URL: ""  # Read replica database URL (optional, for read-only queries)
+    APT_BACKEND_DB_WRITE_URL: ""  # Write database URL (optional, for write operations)
     APT_BACKEND_DB_ECHO: "false"
     APT_BACKEND_DB_ECHO_POOL: "false"
     APT_BACKEND_DB_POOL_SIZE: "20"
     APT_BACKEND_DB_MAX_OVERFLOW: "30"
     APT_BACKEND_DB_POOL_TIMEOUT: "30"
     APT_BACKEND_DB_POOL_RECYCLE: "3600"
-    APT_BACKEND_DB_USE_REPLICA_ENGINE: "false"
+
+    APT_BACKEND_DB_READ_POOL_SIZE: "10"  # Read replica connection pool size
+    APT_BACKEND_DB_WRITE_POOL_SIZE: "20"  # Write database connection pool size
     APT_BACKEND_UVI_HOST: "0.0.0.0"
     APT_BACKEND_UVI_PORT: "9000"
     APT_BACKEND_RELOAD: "false"
@@ -141,6 +146,17 @@ backend:
     APT_BACKEND_RATE_LIMIT_BYPASS_KEY: ""
     APT_BACKEND_RATE_LIMIT_EXCLUDED_PATHS: "/docs,/redoc,/openapi.json,/favicon.ico,/health"
     APT_BACKEND_RATE_LIMIT_BYPASS_PATHS: ""
+    # Rate limiting for authentication endpoints
+    APT_BACKEND_RATE_LIMIT_AUTH_LOGIN_MAX_REQUESTS: "200"
+    APT_BACKEND_RATE_LIMIT_AUTH_LOGIN_WINDOW: "60"
+    APT_BACKEND_RATE_LIMIT_AUTH_REGISTER_MAX_REQUESTS: "200"
+    APT_BACKEND_RATE_LIMIT_AUTH_REGISTER_WINDOW: "60"
+    APT_BACKEND_RATE_LIMIT_AUTH_VERIFY_MAX_REQUESTS: "500"
+    APT_BACKEND_RATE_LIMIT_AUTH_VERIFY_WINDOW: "3600"
+    APT_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_MAX_REQUESTS: "500"
+    APT_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_WINDOW: "300"
+    APT_BACKEND_RATE_LIMIT_AUTH_REFRESH_MAX_REQUESTS: "400"
+    APT_BACKEND_RATE_LIMIT_AUTH_REFRESH_WINDOW: "60"
     APT_BACKEND_MONITOR_ENABLED: "true"
     APT_BACKEND_MONITOR_INTERVAL: "3600"
     APT_BACKEND_MONITOR_BATCH_SIZE: "5"
@@ -150,6 +166,32 @@ backend:
     APT_BACKEND_HTTP_TIMEOUT: "10.0"
     APT_BACKEND_HTTP_RETRIES: "1"
     APT_BACKEND_HTTP_MAX_CONNECTIONS: "10"
+    APT_BACKEND_USER_AGENT: "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.6613.18 Safari/537.36"
+    # API limits and pagination
+    APT_BACKEND_API_PAGE_SIZE_DEFAULT: "10"
+    APT_BACKEND_API_PAGE_SIZE_MAX: "100"
+    APT_BACKEND_API_PRICE_HISTORY_LIMIT_DEFAULT: "10"
+    APT_BACKEND_API_PRICE_HISTORY_LIMIT_MAX: "200"
+    APT_BACKEND_API_PRICE_HISTORY_LIMIT_FULL: "1000"
+    APT_BACKEND_API_QUEUE_LIMIT_DEFAULT: "1"
+    APT_BACKEND_API_QUEUE_LIMIT_MAX: "50"
+    APT_BACKEND_API_BENCH_LIMIT_DEFAULT: "10"
+    APT_BACKEND_API_BENCH_LIMIT_MAX: "100"
+    # Database table names
+    APT_BACKEND_TABLE_CURRENCIES: "currencies"
+    APT_BACKEND_TABLE_PRODUCT_STATES: "product_states"
+    APT_BACKEND_TABLE_PROCESS_STATES: "process_states"
+    APT_BACKEND_TABLE_PRODUCT_CHECKS: "product_checks"
+    APT_BACKEND_TABLE_PRICE_HISTORY: "price_history"
+    APT_BACKEND_TABLE_SCREENSHOTS: "screenshots"
+    APT_BACKEND_TABLE_COUNTRIES: "countries"
+    APT_BACKEND_TABLE_WORKERS: "workers"
+    APT_BACKEND_TABLE_BENCH: "bench"
+    APT_BACKEND_TABLE_USERS: "users"
+    APT_BACKEND_TABLE_USER_SESSIONS: "user_sessions"
+    APT_BACKEND_TABLE_USER_TOKENS: "user_tokens"
+    APT_BACKEND_TABLE_USER_PERMISSIONS: "user_permissions"
+    APT_BACKEND_TABLE_PRODUCT_PROCESSING_LOGS: "product_processing_logs"
     APT_BACKEND_SCREENSHOT_ENABLED: "true"
     APT_BACKEND_SCREENSHOT_ON_PRICE_CHANGE_ONLY: "false"
     APT_BACKEND_SCREENSHOT_ON_CHANGES: "false"

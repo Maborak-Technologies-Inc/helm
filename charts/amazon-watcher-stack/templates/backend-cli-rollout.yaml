@@ -1,4 +1,8 @@
 {{- if .Values.backend.cli.enabled }}
+{{- /* Validation: If database is disabled, APT_BACKEND_DATABASE_URL must be set */}}
+{{- if and (not .Values.database.enabled) (not .Values.backend.env.APT_BACKEND_DATABASE_URL) }}
+{{- fail "ERROR: database.enabled=false but APT_BACKEND_DATABASE_URL is empty. You must provide an external database URL when the internal database is disabled." }}
+{{- end }}
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
