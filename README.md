@@ -616,6 +616,679 @@ Chart updates and security patches are released on a regular schedule:
 
 ---
 
+## RUNBOOK
+
+This section provides operational procedures for SRE and DevOps teams managing the Helm charts in production environments.
+
+### Table of Contents
+
+- [Health Checks & Monitoring](#health-checks--monitoring)
+- [Scaling Operations](#scaling-operations)
+- [Rollout Management](#rollout-management)
+- [Image Updates](#image-updates)
+- [Emergency Procedures](#emergency-procedures)
+- [Database Operations](#database-operations)
+- [CLI Operations](#cli-operations)
+- [Troubleshooting Procedures](#troubleshooting-procedures)
+- [Performance Tuning](#performance-tuning)
+
+---
+
+### Health Checks & Monitoring
+
+#### Check Application Health
+
+```bash
+# Check all pods status
+kubectl get pods -n <namespace> -l app.kubernetes.io/instance=<release-name>
+
+# Check specific component
+kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend
+kubectl get pods -n <namespace> -l app.kubernetes.io/component=ui
+kubectl get pods -n <namespace> -l app.kubernetes.io/component=screenshot
+
+# Check pod health (ready, running, restarts)
+kubectl get pods -n <namespace> -o wide
+
+# Check pod events
+kubectl describe pod <pod-name> -n <namespace>
+
+# Check logs for errors
+kubectl logs -n <namespace> -l app.kubernetes.io/component=backend --tail=100 | grep -i error
+```
+
+#### Check Service Endpoints
+
+```bash
+# Check services
+kubectl get svc -n <namespace>
+
+# Check service endpoints
+kubectl get endpoints -n <namespace>
+
+# Test backend health endpoint
+kubectl exec -n <namespace> <backend-pod> -- curl -f http://localhost:9000/health
+
+# Test from cluster
+kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
+  curl http://<service-name>.<namespace>.svc.cluster.local:9000/health
+```
+
+#### Check ArgoCD Application Status
+
+```bash
+# Get application status
+argocd app get <app-name>
+
+# Check sync status
+argocd app get <app-name> -o jsonpath='{.status.sync.status}'
+
+# Check health status
+argocd app get <app-name> -o jsonpath='{.status.health.status}'
+
+# View application resources
+argocd app manifests <app-name>
+
+# Check sync history
+argocd app history <app-name>
+```
+
+#### Monitor Resource Usage
+
+```bash
+# Check CPU and memory usage
+kubectl top pods -n <namespace>
+
+# Check node resources
+kubectl top nodes
+
+# Check HPA status
+kubectl get hpa -n <namespace>
+
+# Watch HPA scaling in real-time
+watch -n 5 'kubectl get hpa -n <namespace>'
+```
+
+---
+
+### Scaling Operations
+
+#### Manual Scaling
+
+**Using Helm:**
+```bash
+# Scale backend to 3 replicas
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set backend.replicas=3
+
+# Scale UI to 2 replicas
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set ui.replicas=2
+```
+
+**Using kubectl (temporary, will be overridden by ArgoCD):**
+```bash
+# Scale Rollout directly
+kubectl scale rollout <release-name>-backend -n <namespace> --replicas=3
+
+# Scale Deployment (if not using Rollout)
+kubectl scale deployment <release-name>-backend -n <namespace> --replicas=3
+```
+
+**Using ArgoCD:**
+```bash
+# Update values.yaml in Git, then sync
+argocd app sync <app-name>
+
+# Or set parameter directly (not recommended for GitOps)
+argocd app set <app-name> --helm-set backend.replicas=3
+```
+
+#### HPA Configuration
+
+**Check Current HPA Status:**
+```bash
+# Get HPA details
+kubectl get hpa -n <namespace>
+kubectl describe hpa <release-name>-screenshot -n <namespace>
+
+# Check scaling events
+kubectl get events -n <namespace> --field-selector involvedObject.name=<hpa-name> --sort-by='.lastTimestamp'
+```
+
+**HPA Thresholds:**
+- **Target CPU**: 50% of request (default)
+- **Min Replicas**: 1 (default)
+- **Max Replicas**: 10 (default)
+- **Scale Up**: Triggers when CPU > 50% for 15+ seconds
+- **Scale Down**: Triggers when CPU < 50% for 5+ minutes
+
+**Update HPA Configuration:**
+```bash
+# Update via Helm values.yaml
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set screenshot.autoscaling.minReplicas=2 \
+  --set screenshot.autoscaling.maxReplicas=20 \
+  --set screenshot.autoscaling.targetCPUUtilizationPercentage=70
+```
+
+**Disable HPA Temporarily:**
+```bash
+# Set global.hpa to false
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set global.hpa=false
+```
+
+---
+
+### Rollout Management
+
+#### Check Rollout Status
+
+```bash
+# Get Rollout status
+kubectl get rollout <release-name>-screenshot -n <namespace>
+
+# Detailed Rollout info
+kubectl describe rollout <release-name>-screenshot -n <namespace>
+
+# Using Argo Rollouts plugin (if installed)
+kubectl argo rollouts get rollout <release-name>-screenshot -n <namespace>
+
+# Check Rollout history
+kubectl argo rollouts history <release-name>-screenshot -n <namespace>
+```
+
+#### Rollout Operations
+
+**Pause Rollout:**
+```bash
+# Pause canary rollout
+kubectl argo rollouts pause <release-name>-screenshot -n <namespace>
+
+# Resume rollout
+kubectl argo rollouts resume <release-name>-screenshot -n <namespace>
+```
+
+**Promote Canary:**
+```bash
+# Promote canary to stable (skip remaining steps)
+kubectl argo rollouts promote <release-name>-screenshot -n <namespace>
+```
+
+**Abort Rollout:**
+```bash
+# Abort current rollout and rollback
+kubectl argo rollouts abort <release-name>-screenshot -n <namespace>
+```
+
+**Rollback:**
+```bash
+# Rollback to previous revision
+kubectl argo rollouts undo <release-name>-screenshot -n <namespace>
+
+# Rollback to specific revision
+kubectl argo rollouts undo <release-name>-screenshot -n <namespace> --to-revision=2
+```
+
+#### Rollout Strategy Configuration
+
+**Canary Strategy (Progressive):**
+```yaml
+strategy:
+  canary:
+    steps:
+    - setWeight: 10
+    - pause: {}
+    - setWeight: 50
+    - pause: {duration: 5m}
+    - setWeight: 100
+```
+
+**Blue-Green Strategy:**
+```yaml
+strategy:
+  blueGreen:
+    activeService: screenshot
+    previewService: screenshot-preview
+    autoPromotionEnabled: false
+    scaleDownDelaySeconds: 30
+```
+
+---
+
+### Image Updates
+
+#### Manual Image Update
+
+**Method 1: Update values.yaml in Git (Recommended for GitOps):**
+```bash
+# Edit values.yaml
+vim charts/amazon-watcher-stack/values.yaml
+# Change: backend.image.tag: "apt-backend-0.2"
+
+# Commit and push
+git add charts/amazon-watcher-stack/values.yaml
+git commit -m "Update backend image to apt-backend-0.2"
+git push
+
+# ArgoCD will auto-sync (if enabled)
+# Or manually sync
+argocd app sync <app-name>
+```
+
+**Method 2: Helm upgrade:**
+```bash
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set backend.image.tag=apt-backend-0.2 \
+  --set backend.image.pullPolicy=Always
+```
+
+**Method 3: ArgoCD parameter (temporary):**
+```bash
+argocd app set <app-name> --helm-set backend.image.tag=apt-backend-0.2
+argocd app sync <app-name>
+```
+
+#### Verify Image Update
+
+```bash
+# Check current image
+kubectl get rollout <release-name>-backend -n <namespace> \
+  -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Check all pod images
+kubectl get pods -n <namespace> -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+
+# Force image pull (if using same tag)
+kubectl rollout restart rollout <release-name>-backend -n <namespace>
+```
+
+#### Automated Image Updates (ArgoCD Image Updater)
+
+**Setup ArgoCD Image Updater:**
+```yaml
+# In ArgoCD Application manifest
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: <app-name>
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: backend=maborak/platform
+    argocd-image-updater.argoproj.io/backend.update-strategy: semver
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^apt-backend-.*$
+spec:
+  # ... rest of application spec
+```
+
+---
+
+### Emergency Procedures
+
+#### Pod Restart
+
+```bash
+# Restart all pods in a Rollout
+kubectl rollout restart rollout <release-name>-backend -n <namespace>
+
+# Restart specific pod
+kubectl delete pod <pod-name> -n <namespace>
+
+# Force delete pod (if stuck)
+kubectl delete pod <pod-name> -n <namespace> --force --grace-period=0
+```
+
+#### Service Recovery
+
+**If Backend is Down:**
+```bash
+# 1. Check pod status
+kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend
+
+# 2. Check logs
+kubectl logs -n <namespace> -l app.kubernetes.io/component=backend --tail=100
+
+# 3. Check events
+kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep backend
+
+# 4. Restart if needed
+kubectl rollout restart rollout <release-name>-backend -n <namespace>
+
+# 5. Scale up if needed
+kubectl scale rollout <release-name>-backend -n <namespace> --replicas=3
+```
+
+**If Database is Down:**
+```bash
+# 1. Check StatefulSet
+kubectl get statefulset <release-name>-database -n <namespace>
+
+# 2. Check database pod
+kubectl describe pod <release-name>-database-0 -n <namespace>
+
+# 3. Check PVC
+kubectl get pvc -n <namespace>
+
+# 4. Check database logs
+kubectl logs <release-name>-database-0 -n <namespace> --tail=100
+```
+
+#### Rollback Emergency
+
+**Quick Rollback:**
+```bash
+# Rollback to previous revision
+kubectl argo rollouts undo <release-name>-screenshot -n <namespace>
+
+# Or via Helm
+helm rollback <release-name> <revision-number> -n <namespace>
+
+# Or via ArgoCD
+argocd app rollback <app-name> <revision-id>
+```
+
+**Complete Application Rollback:**
+```bash
+# 1. Get application history
+argocd app history <app-name>
+
+# 2. Rollback to previous sync
+argocd app rollback <app-name> <revision-id>
+
+# 3. Verify rollback
+kubectl get pods -n <namespace>
+```
+
+#### Disable Auto-Sync (Emergency)
+
+```bash
+# Disable auto-sync to prevent further changes
+argocd app set <app-name> --sync-policy none
+
+# Re-enable after fixing issue
+argocd app set <app-name> --sync-policy automated
+```
+
+---
+
+### Database Operations
+
+#### Database Connection
+
+```bash
+# Port-forward to database
+kubectl port-forward svc/<release-name>-database -n <namespace> 5432:5432
+
+# Connect using psql
+psql -h localhost -U postgres -d <database-name>
+
+# Or exec into database pod
+kubectl exec -it <release-name>-database-0 -n <namespace> -- psql -U postgres
+```
+
+#### Database Backup
+
+```bash
+# Create backup
+kubectl exec <release-name>-database-0 -n <namespace> -- \
+  pg_dump -U postgres <database-name> > backup-$(date +%Y%m%d).sql
+
+# Or using PVC snapshot (if supported)
+kubectl get pvc <release-name>-database-pvc -n <namespace> -o yaml > pvc-backup.yaml
+```
+
+#### Database Restore
+
+```bash
+# Restore from backup
+kubectl exec -i <release-name>-database-0 -n <namespace> -- \
+  psql -U postgres <database-name> < backup-20260120.sql
+```
+
+#### Database Migration
+
+```bash
+# Run migration using CLI helper
+./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+
+# Or using Alembic
+./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
+```
+
+---
+
+### CLI Operations
+
+#### Run CLI Commands
+
+**Using Helper Script:**
+```bash
+# Run command in CLI Rollout pod
+./kubernetes/run-backend-cli-helm.sh "python cli.py monitor run --batch-limit=500"
+
+# With custom namespace/release
+NAMESPACE=automated RELEASE_NAME=test-apt \
+  ./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+```
+
+**Direct kubectl exec:**
+```bash
+# Get CLI pod
+CLI_POD=$(kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend-cli -o jsonpath='{.items[0].metadata.name}')
+
+# Execute command
+kubectl exec -n <namespace> $CLI_POD -c backend-cli -- \
+  /bin/sh -c "cd /app && python cli.py monitor run"
+```
+
+#### Check CLI Status
+
+```bash
+# Check CLI pods
+kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend-cli
+
+# Check CLI logs
+kubectl logs -n <namespace> -l app.kubernetes.io/component=backend-cli --tail=100
+
+# Check CLI Rollout
+kubectl get rollout <release-name>-backend-cli -n <namespace>
+```
+
+---
+
+### Troubleshooting Procedures
+
+#### Pod Not Starting
+
+**Diagnosis:**
+```bash
+# Check pod status
+kubectl get pod <pod-name> -n <namespace> -o yaml
+
+# Check pod events
+kubectl describe pod <pod-name> -n <namespace>
+
+# Check logs
+kubectl logs <pod-name> -n <namespace> --previous  # If pod crashed
+
+# Check init containers
+kubectl logs <pod-name> -n <namespace> -c <init-container-name>
+```
+
+**Common Issues:**
+- **ImagePullBackOff**: Check image name/tag, image pull secrets
+- **CrashLoopBackOff**: Check application logs, health checks
+- **Pending**: Check resource quotas, node capacity, PVC binding
+
+#### HPA Not Scaling
+
+**Diagnosis:**
+```bash
+# Check HPA status
+kubectl describe hpa <hpa-name> -n <namespace>
+
+# Check Metrics Server
+kubectl get deployment metrics-server -n kube-system
+kubectl logs -n kube-system -l k8s-app=metrics-server
+
+# Check resource requests
+kubectl get rollout <rollout-name> -n <namespace> -o jsonpath='{.spec.template.spec.containers[0].resources}'
+
+# Check current metrics
+kubectl top pods -n <namespace>
+```
+
+**Solutions:**
+- Ensure Metrics Server is running
+- Verify resource requests are set in pod spec
+- Check HPA min/max replicas are correct
+- Verify target utilization percentage
+
+#### Ingress Not Working
+
+**Diagnosis:**
+```bash
+# Check Ingress resource
+kubectl get ingress -n <namespace>
+kubectl describe ingress <ingress-name> -n <namespace>
+
+# Check Ingress Controller
+kubectl get pods -n ingress-nginx
+kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller
+
+# Check service endpoints
+kubectl get endpoints -n <namespace>
+```
+
+**Solutions:**
+- Verify `ingress.className` matches Ingress Controller
+- Check service selector matches pod labels
+- Verify Ingress Controller is running
+- Check LoadBalancer IP assignment (MetalLB)
+
+#### ArgoCD Out of Sync
+
+**Diagnosis:**
+```bash
+# Check application status
+argocd app get <app-name>
+
+# Check diff
+argocd app diff <app-name>
+
+# Check ignored differences
+kubectl get application <app-name> -n argocd -o jsonpath='{.spec.ignoreDifferences}'
+```
+
+**Solutions:**
+- Verify `ignoreDifferences` is configured for HPA-managed Rollouts
+- Check if manual changes were made (will be overridden)
+- Force refresh: `argocd app get <app-name> --refresh`
+- Manual sync: `argocd app sync <app-name>`
+
+---
+
+### Performance Tuning
+
+#### Resource Optimization
+
+**Check Current Resource Usage:**
+```bash
+# Check pod resource usage
+kubectl top pods -n <namespace>
+
+# Check node capacity
+kubectl describe nodes
+
+# Check resource requests vs limits
+kubectl get rollout <rollout-name> -n <namespace> \
+  -o jsonpath='{.spec.template.spec.containers[0].resources}'
+```
+
+**Update Resources:**
+```bash
+# Update via Helm
+helm upgrade <release-name> ./charts/amazon-watcher-stack \
+  --namespace <namespace> \
+  --set backend.resources.requests.cpu=1000m \
+  --set backend.resources.requests.memory=2Gi \
+  --set backend.resources.limits.cpu=2000m \
+  --set backend.resources.limits.memory=4Gi
+```
+
+#### HPA Tuning
+
+**Adjust Scaling Behavior:**
+```yaml
+autoscaling:
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
+      policies:
+      - type: Percent
+        value: 50  # Scale down max 50% at a time
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Scale up immediately
+      policies:
+      - type: Percent
+        value: 100  # Can double replicas
+        periodSeconds: 60
+      - type: Pods
+        value: 4  # Or add 4 pods max
+        periodSeconds: 60
+```
+
+#### Database Tuning
+
+**PostgreSQL Configuration:**
+```bash
+# Check current database config
+kubectl exec <release-name>-database-0 -n <namespace> -- \
+  psql -U postgres -c "SHOW ALL;"
+
+# Update shared_buffers, max_connections, etc. via ConfigMap
+kubectl edit configmap <release-name>-database-config -n <namespace>
+```
+
+---
+
+### Quick Reference Commands
+
+```bash
+# Application Status
+kubectl get all -n <namespace> -l app.kubernetes.io/instance=<release-name>
+
+# All Resources
+kubectl get rollout,hpa,svc,ingress,pvc -n <namespace>
+
+# Watch Resources
+watch -n 2 'kubectl get pods,rollout,hpa -n <namespace>'
+
+# Logs (all components)
+kubectl logs -n <namespace> -l app.kubernetes.io/instance=<release-name> --tail=50
+
+# Events (sorted by time)
+kubectl get events -n <namespace> --sort-by='.lastTimestamp' | tail -20
+
+# Resource Usage
+kubectl top pods -n <namespace> --sort-by=memory
+kubectl top pods -n <namespace> --sort-by=cpu
+
+# ArgoCD Quick Commands
+argocd app list
+argocd app get <app-name>
+argocd app sync <app-name>
+argocd app rollback <app-name> <revision>
+```
+
+---
+
 ## Additional Resources
 
 - [Kubernetes Infrastructure Setup](kubernetes/README.md) - Infrastructure components (MetalLB, Ingress, Argo Rollouts)

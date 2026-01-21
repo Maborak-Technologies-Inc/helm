@@ -57,7 +57,7 @@ backend:
   cli:
     enabled: true  # Set to true to enable CLI Rollout
     replicas: 3  # Number of replicas (used when HPA is disabled)
-    command: "python cli.py monitor run --batch-limit=500 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
+    command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
     # Storage configuration for CLI output files
@@ -526,7 +526,7 @@ istio:
 # Works with any ingress controller (NGINX, Traefik, etc.)
 # Note: Ingress resources are only created if both enabled=true AND className is set
 ingress:
-  enabled: true
+  enabled: false
   className: "nginx"  # Set to your ingress controller class (e.g., "nginx", "traefik"). If empty, Ingress resources will not be created.
   
   # TLS/SSL Configuration
