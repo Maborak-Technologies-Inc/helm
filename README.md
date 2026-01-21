@@ -285,6 +285,12 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  # Ignore replicas field for Rollouts when HPA is managing them
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas
 ```
 
 **Example: Zabbix**

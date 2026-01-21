@@ -332,29 +332,38 @@ install_amazon_watcher_backend() {
         fi
     fi
     
-    # Create application with auto-sync enabled
+    # Create application with auto-sync enabled using YAML manifest
     print_info "Creating ArgoCD application with auto-sync enabled..."
     
-    # Build base command arguments
-    BASE_ARGS=(
-        --repo "${REPO_URL}"
-        --path "${CHART_PATH}"
-        --dest-name in-cluster
-        --dest-namespace "${NAMESPACE}"
-        --project "${PROJECT_NAME}"
-        --sync-policy automated
-        --self-heal
-        --auto-prune
-    )
+    # Get script directory to find template
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    TEMPLATE_FILE="${SCRIPT_DIR}/argocd-application-template.yaml"
     
-    if ! argocd app create "${APP_NAME}" \
-        "${BASE_ARGS[@]}" \
-        --upsert 2>/dev/null; then
-        # If upsert doesn't work, try without it (for older ArgoCD versions)
-        print_info "Trying without upsert flag..."
-        argocd app create "${APP_NAME}" \
-            "${BASE_ARGS[@]}"
+    if [ ! -f "${TEMPLATE_FILE}" ]; then
+        print_error "Application template not found at ${TEMPLATE_FILE}"
+        exit 1
     fi
+    
+    # Create temporary manifest with variable substitution
+    TEMP_MANIFEST=$(mktemp)
+    sed -e "s|\${APP_NAME}|${APP_NAME}|g" \
+        -e "s|\${PROJECT_NAME}|${PROJECT_NAME}|g" \
+        -e "s|\${REPO_URL}|${REPO_URL}|g" \
+        -e "s|\${CHART_PATH}|${CHART_PATH}|g" \
+        -e "s|\${NAMESPACE}|${NAMESPACE}|g" \
+        "${TEMPLATE_FILE}" > "${TEMP_MANIFEST}"
+    
+    # Apply the manifest
+    print_info "Applying ArgoCD Application manifest..."
+    kubectl apply -f "${TEMP_MANIFEST}" || {
+        print_error "Failed to create ArgoCD application"
+        rm -f "${TEMP_MANIFEST}"
+        exit 1
+    }
+    
+    # Clean up temporary file
+    rm -f "${TEMP_MANIFEST}"
+    print_info "✅ ArgoCD Application created with ignoreDifferences configured"
     
     # Step 5: Wait for auto-sync to complete (auto-sync is enabled, so no manual sync needed)
     print_info "Waiting for auto-sync to complete..."

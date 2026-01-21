@@ -11,9 +11,17 @@ metadata:
     {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
-  # When HPA is enabled, use minReplicas as initial count (HPA will manage scaling)
-  # Otherwise, use the configured replicas value
-  replicas: {{ if and .Values.backend.autoscaling.enabled .Values.backend.autoscaling.minReplicas }}{{ .Values.backend.autoscaling.minReplicas }}{{ else }}{{ .Values.backend.replicas }}{{ end }}
+  {{- $hpaEnabled := .Values.backend.autoscaling.enabled }}
+  {{- if and (hasKey .Values.global "hpa") (ne .Values.global.hpa nil) (ne .Values.global.hpa "") }}
+    {{- $hpaEnabled = .Values.global.hpa }}
+  {{- end }}
+  {{- if not $hpaEnabled }}
+  # Only set replicas if HPA is not enabled (HPA will manage replicas when enabled)
+  replicas: {{ .Values.backend.replicas }}
+  {{- else if .Values.backend.autoscaling.minReplicas }}
+  # When HPA is enabled, set initial replicas to minReplicas (HPA will manage scaling)
+  replicas: {{ .Values.backend.autoscaling.minReplicas }}
+  {{- end }}
   revisionHistoryLimit: {{ .Values.backend.rollout.revisionHistoryLimit | default 10 }}
   {{- if .Values.backend.rollout.progressDeadlineSeconds }}
   progressDeadlineSeconds: {{ .Values.backend.rollout.progressDeadlineSeconds }}

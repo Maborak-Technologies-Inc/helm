@@ -10,6 +10,8 @@ global:
   domain:
     ui: ui.amazon-watcher.local
     backend: api.amazon-watcher.local
+  # Global HPA override (empty = use individual service settings, true/false = override all)
+  hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
 
 # Database Configuration
 database:
