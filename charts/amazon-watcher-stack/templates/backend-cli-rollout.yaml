@@ -1,50 +1,70 @@
-{{- if .Values.backend.cliJob.enabled }}
-apiVersion: batch/v1
-kind: Job
+{{- if .Values.backend.cli.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
-  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli-{{ .Values.backend.cliJob.timestamp | default (now | date "20060102150405") }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend-cli
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
   {{- if .Values.argocd.annotations }}
   annotations:
     {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.backend.cliJob.parallelism }}
-  parallelism: {{ .Values.backend.cliJob.parallelism }}
+  {{- $hpaEnabled := .Values.backend.cli.autoscaling.enabled }}
+  {{- if and (hasKey .Values.global "hpa") (ne .Values.global.hpa nil) (ne .Values.global.hpa "") }}
+    {{- $hpaEnabled = .Values.global.hpa }}
   {{- end }}
-  {{- if .Values.backend.cliJob.completions }}
-  completions: {{ .Values.backend.cliJob.completions }}
+  {{- if not $hpaEnabled }}
+  # Only set replicas if HPA is not enabled (HPA will manage replicas when enabled)
+  replicas: {{ .Values.backend.cli.replicas }}
+  {{- else if .Values.backend.cli.autoscaling.minReplicas }}
+  # When HPA is enabled, set initial replicas to minReplicas (HPA will manage scaling)
+  replicas: {{ .Values.backend.cli.autoscaling.minReplicas }}
   {{- end }}
-  backoffLimit: {{ .Values.backend.cliJob.backoffLimit | default 1 }}
-  ttlSecondsAfterFinished: {{ .Values.backend.cliJob.ttlSecondsAfterFinished | default 3600 }}
+  revisionHistoryLimit: {{ .Values.backend.cli.rollout.revisionHistoryLimit | default 10 }}
+  {{- if .Values.backend.cli.rollout.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.backend.cli.rollout.progressDeadlineSeconds }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend-cli
   template:
     metadata:
       labels:
         {{- include "amazon-watcher-stack.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend-cli
+      annotations:
+        checksum/env: {{ include "amazon-watcher-stack.backend.envChecksum" . }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ include "amazon-watcher-stack.fullname" . }}
       {{- end }}
-      restartPolicy: Never
-      {{- if .Values.backend.cliJob.waitForBackend }}
+      {{- if .Values.backend.cli.waitForBackend }}
       initContainers:
-      - name: wait-for-backend
+      - name: wait-for-services
         image: curlimages/curl:latest
         command: ['sh', '-c']
         args:
           - |
-            echo "Waiting for backend service to be ready..."
+            echo "Waiting for backend and screenshot services to be ready..."
             BACKEND_SERVICE="{{ include "amazon-watcher-stack.backend.serviceName" . }}"
             BACKEND_PORT="{{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}"
-            MAX_WAIT={{ .Values.backend.cliJob.maxWaitSeconds | default 300 }}
+            SCREENSHOT_SERVICE="{{ include "amazon-watcher-stack.screenshot.serviceName" . }}"
+            SCREENSHOT_PORT="{{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}"
+            MAX_WAIT={{ .Values.backend.cli.maxWaitSeconds | default 300 }}
             ELAPSED=0
             
-            # Wait for service to be available using curl
+            # Wait for backend service
+            echo "Checking backend service: $BACKEND_SERVICE:$BACKEND_PORT"
             until curl -f -s --max-time 2 http://$BACKEND_SERVICE:$BACKEND_PORT/health >/dev/null 2>&1; do
               if [ $ELAPSED -ge $MAX_WAIT ]; then
                 echo "❌ Timeout: Backend service not available after ${MAX_WAIT}s"
@@ -54,11 +74,27 @@ spec:
               sleep 5
               ELAPSED=$((ELAPSED + 5))
             done
-            
             echo "✅ Backend service is ready at $BACKEND_SERVICE:$BACKEND_PORT"
+            
+            # Reset elapsed for screenshot check
+            ELAPSED=0
+            
+            # Wait for screenshot service
+            echo "Checking screenshot service: $SCREENSHOT_SERVICE:$SCREENSHOT_PORT"
+            until curl -f -s --max-time 2 http://$SCREENSHOT_SERVICE:$SCREENSHOT_PORT/health >/dev/null 2>&1; do
+              if [ $ELAPSED -ge $MAX_WAIT ]; then
+                echo "❌ Timeout: Screenshot service not available after ${MAX_WAIT}s"
+                exit 1
+              fi
+              echo "Waiting for $SCREENSHOT_SERVICE:$SCREENSHOT_PORT... (${ELAPSED}s/${MAX_WAIT}s)"
+              sleep 5
+              ELAPSED=$((ELAPSED + 5))
+            done
+            echo "✅ Screenshot service is ready at $SCREENSHOT_SERVICE:$SCREENSHOT_PORT"
+            echo "✅ All required services are ready!"
       {{- end }}
       containers:
-      - name: backend
+      - name: backend-cli
         image: {{ include "amazon-watcher-stack.backend.image" . }}
         imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
         workingDir: /app
@@ -67,11 +103,9 @@ spec:
           - |
             set -e
             echo "Starting backend CLI command..."
-            echo "Command: {{ .Values.backend.cliJob.command }}"
+            echo "Command: {{ .Values.backend.cli.command }}"
             echo "---"
-            {{ .Values.backend.cliJob.command }}
-            echo "---"
-            echo "Command completed successfully"
+            {{ .Values.backend.cli.command }}
         env:
           - name: PYTHONPATH
             value: "/app"
@@ -94,10 +128,10 @@ spec:
             value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
           # Iterate over all env vars from values.yaml - same as backend rollout
           {{- include "amazon-watcher-stack.backend.env" . | nindent 10 }}
-        {{- if and .Values.backend.cliJob.storage.enabled .Values.global.storage.enabled }}
+        {{- if and .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
         volumeMounts:
           - name: cli-storage
-            mountPath: {{ .Values.backend.cliJob.storage.mountPath | default "/var/screenshots" }}
+            mountPath: {{ .Values.backend.cli.storage.mountPath | default "/var/screenshots" }}
         {{- end }}
         resources:
           {{- toYaml .Values.backend.resources | nindent 10 }}
@@ -105,6 +139,12 @@ spec:
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+      {{- if and .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
+      volumes:
+        - name: cli-storage
+          persistentVolumeClaim:
+            claimName: {{ include "amazon-watcher-stack.fullname" . }}-storage
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -117,10 +157,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if and .Values.backend.cliJob.storage.enabled .Values.global.storage.enabled }}
-      volumes:
-        - name: cli-storage
-          persistentVolumeClaim:
-            claimName: {{ include "amazon-watcher-stack.fullname" . }}-storage
-      {{- end }}
+  {{- if .Values.backend.cli.rollout.strategy }}
+  strategy:
+    {{- toYaml .Values.backend.cli.rollout.strategy | nindent 4 }}
+  {{- else }}
+  # Default to simple canary strategy (equivalent to rolling update)
+  strategy:
+    canary:
+      steps: []
+  {{- end }}
 {{- end }}

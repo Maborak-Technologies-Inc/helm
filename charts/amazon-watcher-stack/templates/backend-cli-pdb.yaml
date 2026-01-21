@@ -1,0 +1,24 @@
+{{- if and .Values.backend.cli.enabled .Values.backend.cli.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend-cli
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.backend.cli.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.backend.cli.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.backend.cli.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.backend.cli.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend-cli
+{{- end }}

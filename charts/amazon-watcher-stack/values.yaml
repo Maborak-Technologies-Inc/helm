@@ -53,21 +53,35 @@ database:
 backend:
   enabled: true
   replicas: 3
-  # CLI Job configuration (for running one-time commands)
-  cliJob:
-    enabled: true  # Set to true and provide command to create a Job
-    command: "python cli.py monitor run --batch-limit=500 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run (e.g., "python manage.py migrate")
-    timestamp: ""  # Optional: custom timestamp for Job name (auto-generated if empty)
-    parallelism: 1  # Number of pods to run concurrently (default: 1)
-    completions: 1  # Number of successful completions required (default: 1, set to null for parallel jobs)
-    backoffLimit: 1  # Number of retries before marking Job as failed
-    ttlSecondsAfterFinished: 3600  # Auto-delete Job after 1 hour
-    waitForBackend: true  # Wait for backend service to be ready before executing command
+  # CLI Rollout configuration (for continuous monitoring/processing)
+  cli:
+    enabled: true  # Set to true to enable CLI Rollout
+    replicas: 3  # Number of replicas (used when HPA is disabled)
+    command: "python cli.py monitor run --batch-limit=500 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
+    waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
-    # Storage configuration for CLI Job output files
+    # Storage configuration for CLI output files
     storage:
       enabled: true  # Mount persistent storage for CLI-generated files (uses global.storage)
       mountPath: "/var/screenshots"  # Path where files will be written (shared with backend)
+    # Argo Rollout configuration
+    rollout:
+      revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+      progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+      # strategy: {}  # Optional: canary or blueGreen strategy
+    # Autoscaling configuration
+    autoscaling:
+      enabled: true  # Enable Horizontal Pod Autoscaler
+      minReplicas: 3  # Minimum number of replicas
+      maxReplicas: 10  # Maximum number of replicas
+      targetCPUUtilizationPercentage: 80  # Target CPU utilization
+      # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization
+      # behavior: {}  # Optional: Scaling behavior configuration
+    # Pod Disruption Budget configuration
+    podDisruptionBudget:
+      enabled: true  # Set to true to enable PDB
+      # minAvailable: 2  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
+      maxUnavailable: 1  # Maximum number of pods that can be unavailable
   image:
     repository: maborak/platform
     tag: "apt-backend-0.1"

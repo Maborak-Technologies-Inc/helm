@@ -1,0 +1,41 @@
+{{- if and .Values.backend.cli.enabled .Values.backend.cli.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend-cli
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ include "amazon-watcher-stack.fullname" . }}-backend-cli
+  minReplicas: {{ .Values.backend.cli.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.backend.cli.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.backend.cli.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.backend.cli.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.backend.cli.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.backend.cli.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.backend.cli.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.backend.cli.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}
