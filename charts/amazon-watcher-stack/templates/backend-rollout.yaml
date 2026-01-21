@@ -100,20 +100,20 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
-          {{- if .Values.backend.screenshotStorage.enabled }}
+          {{- if .Values.global.storage.enabled }}
           volumeMounts:
-            - name: screenshot-storage
-              mountPath: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_STORAGE_PATH | default "./var/screenshots" }}
+            - name: shared-storage
+              mountPath: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_STORAGE_PATH | default "/var/screenshots" }}
           {{- end }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- if .Values.backend.screenshotStorage.enabled }}
+      {{- if .Values.global.storage.enabled }}
       volumes:
-        - name: screenshot-storage
+        - name: shared-storage
           persistentVolumeClaim:
-            claimName: {{ include "amazon-watcher-stack.fullname" . }}-backend-screenshots-pvc
+            claimName: {{ include "amazon-watcher-stack.fullname" . }}-storage
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -12,6 +12,13 @@ global:
     backend: api.amazon-watcher.local
   # Global HPA override (empty = use individual service settings, true/false = override all)
   hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
+  # Global persistent storage (shared across backend, CLI jobs, and other services)
+  storage:
+    enabled: true  # Enable global persistent storage
+    storageClassName: ""  # Storage class (empty = use default)
+    size: 10Gi  # Storage size
+    accessModes:
+      - ReadWriteOnce  # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
 
 # Database Configuration
 database:
@@ -57,6 +64,10 @@ backend:
     ttlSecondsAfterFinished: 3600  # Auto-delete Job after 1 hour
     waitForBackend: true  # Wait for backend service to be ready before executing command
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
+    # Storage configuration for CLI Job output files
+    storage:
+      enabled: true  # Mount persistent storage for CLI-generated files (uses global.storage)
+      mountPath: "/var/screenshots"  # Path where files will be written (shared with backend)
   image:
     repository: maborak/platform
     tag: "apt-backend-0.1"
@@ -130,7 +141,7 @@ backend:
     APT_BACKEND_SCREENSHOT_ON_CHANGES: "false"
     APT_BACKEND_SCREENSHOT_ALWAYS: "true"
     APT_BACKEND_SCREENSHOT_MAX_RETRIES: "3"
-    APT_BACKEND_SCREENSHOT_STORAGE_PATH: "./var/screenshots"
+    APT_BACKEND_SCREENSHOT_STORAGE_PATH: "/var/screenshots"  # Mounted from global.storage (shared with CLI Job)
     APT_BACKEND_SCREENSHOT_SERVICE_URL: ""  # Auto-generated from screenshot service if empty
     APT_BACKEND_SCREENSHOT_SERVICE_WIDTH: "1200"
     APT_BACKEND_SCREENSHOT_SERVICE_HEIGHT: "960"
@@ -140,13 +151,10 @@ backend:
     APT_BACKEND_SCREENSHOT_SERVICE_BROWSER_TYPE: "chromium"
     APT_BACKEND_BENCH_KEY: ""
     APT_BACKEND_TEST_MODE: "false"
-  # Screenshot storage volume
+  # Screenshot storage volume (deprecated - use global.storage instead)
+  # This section is kept for backward compatibility but is ignored if global.storage.enabled is true
   screenshotStorage:
-    enabled: true
-    storageClassName: ""
-    size: 5Gi
-    accessModes:
-      - ReadWriteOnce
+    enabled: false  # Deprecated: use global.storage instead
   # Pod Disruption Budget configuration
   podDisruptionBudget:
     enabled: false  # Set to true to enable PDB

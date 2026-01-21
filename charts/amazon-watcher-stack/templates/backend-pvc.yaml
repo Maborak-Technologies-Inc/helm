@@ -1,20 +1,20 @@
-{{- if and .Values.backend.enabled .Values.backend.screenshotStorage.enabled }}
+{{- if and .Values.backend.enabled .Values.global.storage.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "amazon-watcher-stack.fullname" . }}-backend-screenshots-pvc
+  name: {{ include "amazon-watcher-stack.fullname" . }}-storage
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    app.kubernetes.io/component: storage
 spec:
   accessModes:
-    {{- range .Values.backend.screenshotStorage.accessModes }}
+    {{- range .Values.global.storage.accessModes }}
     - {{ . | quote }}
     {{- end }}
-  {{- if .Values.backend.screenshotStorage.storageClassName }}
-  storageClassName: {{ .Values.backend.screenshotStorage.storageClassName | quote }}
+  {{- if .Values.global.storage.storageClassName }}
+  storageClassName: {{ .Values.global.storage.storageClassName | quote }}
   {{- end }}
   resources:
     requests:
-      storage: {{ .Values.backend.screenshotStorage.size | quote }}
+      storage: {{ .Values.global.storage.size | quote }}
 {{- end }}

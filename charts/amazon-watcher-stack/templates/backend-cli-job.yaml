@@ -94,6 +94,11 @@ spec:
             value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
           # Iterate over all env vars from values.yaml - same as backend rollout
           {{- include "amazon-watcher-stack.backend.env" . | nindent 10 }}
+        {{- if and .Values.backend.cliJob.storage.enabled .Values.global.storage.enabled }}
+        volumeMounts:
+          - name: cli-storage
+            mountPath: {{ .Values.backend.cliJob.storage.mountPath | default "/var/screenshots" }}
+        {{- end }}
         resources:
           {{- toYaml .Values.backend.resources | nindent 10 }}
         {{- with .Values.securityContext }}
@@ -111,5 +116,11 @@ spec:
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.backend.cliJob.storage.enabled .Values.global.storage.enabled }}
+      volumes:
+        - name: cli-storage
+          persistentVolumeClaim:
+            claimName: {{ include "amazon-watcher-stack.fullname" . }}-storage
       {{- end }}
 {{- end }}
