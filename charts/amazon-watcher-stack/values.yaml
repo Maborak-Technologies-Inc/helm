@@ -22,7 +22,7 @@ global:
 
 # Database Configuration
 database:
-  enabled: true
+  enabled: false
   postgres:
     version: "16-alpine"
     db: amazon_watcher
@@ -55,8 +55,8 @@ backend:
   replicas: 3
   # CLI Rollout configuration (for continuous monitoring/processing)
   cli:
-    enabled: true  # Set to true to enable CLI Rollout
-    replicas: 0  # Number of replicas (used when HPA is disabled)
+    enabled: false  # Set to true to enable CLI Rollout
+    replicas: 1  # Number of replicas (used when HPA is disabled)
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
