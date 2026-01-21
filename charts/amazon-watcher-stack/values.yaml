@@ -60,11 +60,26 @@ backend:
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
-    # Storage configuration for CLI output files
-    storage:
-      enabled: true  # Mount persistent storage for CLI-generated files (uses global.storage)
-      mountPath: "/var/screenshots"  # Path where files will be written (shared with backend)
-    # Argo Rollout configuration
+  # CronJob configuration (for periodic tasks)
+  cronjob:
+    enabled: false  # Set to true to enable CronJob
+    schedule: "*/10 * * * *"  # Run every 10 minutes (cron format)
+    command: "python cli.py system network ips"  # Command to run periodically
+    waitForBackend: true  # Wait for backend service to be ready before running
+    maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
+    concurrencyPolicy: Forbid  # Prevent concurrent job executions (Forbid, Allow, Replace)
+    successfulJobsHistoryLimit: 3  # Number of successful jobs to keep
+    failedJobsHistoryLimit: 1  # Number of failed jobs to keep
+    suspend: false  # Set to true to suspend the CronJob
+    backoffLimit: 3  # Number of retries before marking job as failed
+    activeDeadlineSeconds: 600  # Maximum seconds a job can run (default: 10 minutes)
+    resources:
+      limits:
+        memory: 512Mi
+        cpu: 500m
+      requests:
+        memory: 256Mi
+        cpu: 100m
     rollout:
       revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
       progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
