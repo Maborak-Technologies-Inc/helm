@@ -62,7 +62,7 @@ backend:
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
   # CronJob configuration (for periodic tasks)
   cronjob:
-    enabled: false  # Set to true to enable CronJob
+    enabled: true  # Set to true to enable CronJob
     schedule: "*/10 * * * *"  # Run every 10 minutes (cron format)
     command: "python cli.py system network ips"  # Command to run periodically
     waitForBackend: true  # Wait for backend service to be ready before running
