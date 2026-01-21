@@ -13,6 +13,12 @@ metadata:
     {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
+  {{- if .Values.backend.cliJob.parallelism }}
+  parallelism: {{ .Values.backend.cliJob.parallelism }}
+  {{- end }}
+  {{- if .Values.backend.cliJob.completions }}
+  completions: {{ .Values.backend.cliJob.completions }}
+  {{- end }}
   backoffLimit: {{ .Values.backend.cliJob.backoffLimit | default 1 }}
   ttlSecondsAfterFinished: {{ .Values.backend.cliJob.ttlSecondsAfterFinished | default 3600 }}
   template:
@@ -28,7 +34,7 @@ spec:
       {{- if .Values.backend.cliJob.waitForBackend }}
       initContainers:
       - name: wait-for-backend
-        image: busybox:1.36
+        image: curlimages/curl:latest
         command: ['sh', '-c']
         args:
           - |
@@ -38,8 +44,8 @@ spec:
             MAX_WAIT={{ .Values.backend.cliJob.maxWaitSeconds | default 300 }}
             ELAPSED=0
             
-            # Wait for service to be available
-            until nc -z $BACKEND_SERVICE $BACKEND_PORT; do
+            # Wait for service to be available using curl
+            until curl -f -s --max-time 2 http://$BACKEND_SERVICE:$BACKEND_PORT/health >/dev/null 2>&1; do
               if [ $ELAPSED -ge $MAX_WAIT ]; then
                 echo "❌ Timeout: Backend service not available after ${MAX_WAIT}s"
                 exit 1
