@@ -109,12 +109,14 @@ spec:
         env:
           - name: PYTHONPATH
             value: "/app"
-          # Special env vars (from secrets or computed) - same as backend rollout
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
-                key: postgres-password
+                 # Special env vars (from secrets or computed) - same as backend rollout
+                 {{- if .Values.database.enabled }}
+                 - name: POSTGRES_PASSWORD
+                   valueFrom:
+                     secretKeyRef:
+                       name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
+                       key: postgres-password
+                 {{- end }}
           - name: APT_BACKEND_JWT_SECRET
             valueFrom:
               secretKeyRef:
