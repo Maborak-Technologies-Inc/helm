@@ -679,7 +679,7 @@ argocd:
     app.maborak.com/contact: "wilmer@maborak.com"  # e.g., "team@maborak.com"
     app.maborak.com/created-by: "argo-cd"  # Indicates ArgoCD created this resource
     app.maborak.com/department: "Platform"  # e.g., "platform", "engineering"
-    app.maborak.com/project: "Amazon Watcher (APT)"  # e.g., "amazon-watcher"
+    app.maborak.com/project: "amazon-watcher-stack"  # e.g., "amazon-watcher"
     
     # Argo Rollouts notifications (Slack, etc.)
     # notifications.argoproj.io/subscribe.on-rollout-aborted.slack: "channel-name"
@@ -702,9 +702,9 @@ argocd:
     # app.kubernetes.io/managed-by, app.kubernetes.io/version, app.kubernetes.io/part-of
     
     # Organization-specific labels
-    app.maborak.com/bounded-context: "Amazon Watcher (APT)"  # Domain/bounded context
+    app.maborak.com/bounded-context: "amazon-watcher-stack"  # Domain/bounded context
     app.maborak.com/chart-name: "amazon-watcher-stack"  # Helm chart name
-    app.maborak.com/cluster-name: "Amazon Watcher (APT)"  # Kubernetes cluster name
+    app.maborak.com/cluster-name: "amazon-watcher-stack"  # Kubernetes cluster name
     app.maborak.com/environment: "Development"  # Environment: prod, staging, dev
     app.maborak.com/family: "Backend"  # Technology family: backend, frontend, database
     app.maborak.com/runtime: "EKS"  # Runtime: eks, gke, aks, docker-desktop
@@ -714,10 +714,10 @@ argocd:
     app.maborak.com/type: "Business"  # Application type: business, infrastructure, platform
     
     # ArgoCD instance label
-    argocd.argoproj.io/instance: "Amazon Watcher (APT)"  # ArgoCD application instance name
+    argocd.argoproj.io/instance: "amazon-watcher-stack"  # ArgoCD application instance name
     
     # Platform-specific labels
-    platform.maborak.com/namespace: "Amazon Watcher (APT)"  # Target namespace
+    platform.maborak.com/namespace: "amazon-watcher-stack"  # Target namespace
     # platform.maborak.com/network-policies-version: ""
     # platform.maborak.com/istio-telemetry-api-flag: ""
     
@@ -725,4 +725,4 @@ argocd:
   tags:
     environment: "Development"  # Maps to app.maborak.com/environment
     team: "Platform"  # Maps to app.maborak.com/team
-    project: "Amazon Watcher (APT)"  # Maps to app.maborak.com/project
+    project: "amazon-watcher-stack"  # Maps to app.maborak.com/project
