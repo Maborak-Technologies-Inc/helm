@@ -60,15 +60,15 @@ backend:
   replicas: 3
   # CLI Rollout configuration (for continuous monitoring/processing)
   cli:
-    enabled: false  # Set to true to enable CLI Rollout
+    enabled: true  # Set to true to enable CLI Rollout
     replicas: 1  # Number of replicas (used when HPA is disabled)
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
     # Autoscaling configuration for CLI Rollout
     autoscaling:
-      enabled: false  # Set to true to enable HPA for CLI
-      minReplicas: 3  # Minimum number of CLI pods (HPA will scale down to this)
+      enabled: true  # Set to true to enable HPA for CLI
+      minReplicas: 1  # Minimum number of CLI pods (HPA will scale down to this)
       maxReplicas: 10  # Maximum number of CLI pods (HPA will scale up to this)
       targetCPUUtilizationPercentage: 80  # Target CPU utilization percentage
       # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization percentage
@@ -112,18 +112,9 @@ backend:
       requests:
         memory: 256Mi
         cpu: 100m
-    rollout:
-      revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
-      progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
-      # strategy: {}  # Optional: canary or blueGreen strategy
-    # Autoscaling configuration
-    autoscaling:
-      enabled: false  # Enable Horizontal Pod Autoscaler
-      minReplicas: 3  # Minimum number of replicas
-      maxReplicas: 10  # Maximum number of replicas
-      targetCPUUtilizationPercentage: 80  # Target CPU utilization
-      # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization
-      # behavior: {}  # Optional: Scaling behavior configuration
+    # Note: CronJob does not support autoscaling (HPA)
+    # CronJob creates Jobs on schedule - each Job runs pods to completion
+    # For autoscaling, use Rollout/Deployment instead
     # Pod Disruption Budget configuration
     podDisruptionBudget:
       enabled: true  # Set to true to enable PDB
@@ -628,7 +619,7 @@ istio:
 # Works with any ingress controller (NGINX, Traefik, etc.)
 # Note: Ingress resources are only created if both enabled=true AND className is set
 ingress:
-  enabled: false
+  enabled: true
   className: "nginx"  # Set to your ingress controller class (e.g., "nginx", "traefik"). If empty, Ingress resources will not be created.
   
   # TLS/SSL Configuration
@@ -643,7 +634,7 @@ secrets:
   # Database password (if not using database.postgres.password)
   databasePassword: ""
   # JWT secret for backend
-  jwtSecret: ""
+  jwtSecret: "pipi"
 
 # Service Account
 serviceAccount:
@@ -685,10 +676,10 @@ argocd:
   # ArgoCD annotations for sync control and metadata
   annotations:
     # Application metadata (similar to Upwork pattern)
-    app.maborak.com/contact: ""  # e.g., "team@maborak.com"
+    app.maborak.com/contact: "wilmer@maborak.com"  # e.g., "team@maborak.com"
     app.maborak.com/created-by: "argo-cd"  # Indicates ArgoCD created this resource
-    app.maborak.com/department: ""  # e.g., "platform", "engineering"
-    app.maborak.com/project: ""  # e.g., "amazon-watcher"
+    app.maborak.com/department: "Platform"  # e.g., "platform", "engineering"
+    app.maborak.com/project: "Amazon Watcher (APT)"  # e.g., "amazon-watcher"
     
     # Argo Rollouts notifications (Slack, etc.)
     # notifications.argoproj.io/subscribe.on-rollout-aborted.slack: "channel-name"
@@ -711,27 +702,27 @@ argocd:
     # app.kubernetes.io/managed-by, app.kubernetes.io/version, app.kubernetes.io/part-of
     
     # Organization-specific labels
-    app.maborak.com/bounded-context: ""  # Domain/bounded context
+    app.maborak.com/bounded-context: "Amazon Watcher (APT)"  # Domain/bounded context
     app.maborak.com/chart-name: "amazon-watcher-stack"  # Helm chart name
-    app.maborak.com/cluster-name: ""  # Kubernetes cluster name
+    app.maborak.com/cluster-name: "Amazon Watcher (APT)"  # Kubernetes cluster name
     app.maborak.com/environment: "Development"  # Environment: prod, staging, dev
-    app.maborak.com/family: ""  # Technology family: backend, frontend, database
-    app.maborak.com/runtime: ""  # Runtime: eks, gke, aks, docker-desktop
-    app.maborak.com/service-runtime: ""  # Service runtime: nodejs, python, go
-    app.maborak.com/team: ""  # Team name
-    app.maborak.com/tier: ""  # Application tier: T1, T2, T3
-    app.maborak.com/type: ""  # Application type: business, infrastructure, platform
+    app.maborak.com/family: "Backend"  # Technology family: backend, frontend, database
+    app.maborak.com/runtime: "EKS"  # Runtime: eks, gke, aks, docker-desktop
+    app.maborak.com/service-runtime: "Python"  # Service runtime: nodejs, python, go
+    app.maborak.com/team: "Platform"  # Team name
+    app.maborak.com/tier: "T1"  # Application tier: T1, T2, T3
+    app.maborak.com/type: "Business"  # Application type: business, infrastructure, platform
     
     # ArgoCD instance label
-    argocd.argoproj.io/instance: ""  # ArgoCD application instance name
+    argocd.argoproj.io/instance: "Amazon Watcher (APT)"  # ArgoCD application instance name
     
     # Platform-specific labels
-    platform.maborak.com/namespace: ""  # Target namespace
+    platform.maborak.com/namespace: "Amazon Watcher (APT)"  # Target namespace
     # platform.maborak.com/network-policies-version: ""
     # platform.maborak.com/istio-telemetry-api-flag: ""
     
   # Legacy tags (deprecated - use labels instead, but kept for backward compatibility)
   tags:
     environment: "Development"  # Maps to app.maborak.com/environment
-    team: ""  # Maps to app.maborak.com/team
-    project: ""  # Maps to app.maborak.com/project
+    team: "Platform"  # Maps to app.maborak.com/team
+    project: "Amazon Watcher (APT)"  # Maps to app.maborak.com/project
