@@ -15,19 +15,22 @@ metadata:
     {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
-  {{- $hpaEnabled := .Values.backend.cli.autoscaling.enabled }}
+  {{- $hpaEnabled := false }}
+  {{- if and (hasKey .Values.backend.cli "autoscaling") .Values.backend.cli.autoscaling.enabled }}
+    {{- $hpaEnabled = .Values.backend.cli.autoscaling.enabled }}
+  {{- end }}
   {{- if and (hasKey .Values.global "hpa") (ne .Values.global.hpa nil) (ne .Values.global.hpa "") }}
     {{- $hpaEnabled = .Values.global.hpa }}
   {{- end }}
   {{- if not $hpaEnabled }}
   # Only set replicas if HPA is not enabled (HPA will manage replicas when enabled)
   replicas: {{ .Values.backend.cli.replicas }}
-  {{- else if .Values.backend.cli.autoscaling.minReplicas }}
+  {{- else if and (hasKey .Values.backend.cli "autoscaling") .Values.backend.cli.autoscaling.minReplicas }}
   # When HPA is enabled, set initial replicas to minReplicas (HPA will manage scaling)
   replicas: {{ .Values.backend.cli.autoscaling.minReplicas }}
   {{- end }}
-  revisionHistoryLimit: {{ .Values.backend.cli.rollout.revisionHistoryLimit | default 10 }}
-  {{- if .Values.backend.cli.rollout.progressDeadlineSeconds }}
+  revisionHistoryLimit: {{ if hasKey .Values.backend.cli "rollout" }}{{ .Values.backend.cli.rollout.revisionHistoryLimit | default 10 }}{{ else }}10{{ end }}
+  {{- if and (hasKey .Values.backend.cli "rollout") .Values.backend.cli.rollout.progressDeadlineSeconds }}
   progressDeadlineSeconds: {{ .Values.backend.cli.rollout.progressDeadlineSeconds }}
   {{- end }}
   selector:
@@ -113,14 +116,14 @@ spec:
         env:
           - name: PYTHONPATH
             value: "/app"
-                 # Special env vars (from secrets or computed) - same as backend rollout
-                 {{- if .Values.database.enabled }}
-                 - name: POSTGRES_PASSWORD
-                   valueFrom:
-                     secretKeyRef:
-                       name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
-                       key: postgres-password
-                 {{- end }}
+          # Special env vars (from secrets or computed) - same as backend rollout
+          {{- if .Values.database.enabled }}
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
+                key: postgres-password
+          {{- end }}
           - name: APT_BACKEND_JWT_SECRET
             valueFrom:
               secretKeyRef:
@@ -134,10 +137,10 @@ spec:
             value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
           # Iterate over all env vars from values.yaml - same as backend rollout
           {{- include "amazon-watcher-stack.backend.env" . | nindent 10 }}
-        {{- if and .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
+        {{- if and (hasKey .Values.backend.cli "storage") .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
         volumeMounts:
           - name: cli-storage
-            mountPath: {{ .Values.backend.cli.storage.mountPath | default "/var/screenshots" }}
+            mountPath: {{ if hasKey .Values.backend.cli.storage "mountPath" }}{{ .Values.backend.cli.storage.mountPath }}{{ else }}/var/screenshots{{ end }}
         {{- end }}
         resources:
           {{- toYaml .Values.backend.resources | nindent 10 }}
@@ -145,7 +148,7 @@ spec:
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-      {{- if and .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
+      {{- if and (hasKey .Values.backend.cli "storage") .Values.backend.cli.storage.enabled .Values.global.storage.enabled }}
       volumes:
         - name: cli-storage
           persistentVolumeClaim:
@@ -163,7 +166,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if .Values.backend.cli.rollout.strategy }}
+  {{- if and (hasKey .Values.backend.cli "rollout") .Values.backend.cli.rollout.strategy }}
   strategy:
     {{- toYaml .Values.backend.cli.rollout.strategy | nindent 4 }}
   {{- else }}

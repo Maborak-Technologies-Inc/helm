@@ -1,4 +1,4 @@
-{{- if and .Values.backend.cli.enabled .Values.backend.cli.autoscaling.enabled }}
+{{- if and .Values.backend.cli.enabled (hasKey .Values.backend.cli "autoscaling") .Values.backend.cli.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
