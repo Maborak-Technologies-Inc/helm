@@ -26,17 +26,31 @@ spec:
             - |
               SECRET_NAME="{{ include "amazon-watcher-stack.fullname" . }}-backend-secret"
               
+              # Check if secret exists and has a non-empty jwt-secret value
               if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
-                echo "Secret $SECRET_NAME already exists"
-                exit 0
+                EXISTING_SECRET=$(kubectl get secret "$SECRET_NAME" -o jsonpath='{.data.jwt-secret}' 2>/dev/null || echo "")
+                if [ -n "$EXISTING_SECRET" ] && [ "$EXISTING_SECRET" != "" ]; then
+                  DECODED=$(echo "$EXISTING_SECRET" | base64 -d 2>/dev/null || echo "")
+                  if [ -n "$DECODED" ] && [ ${#DECODED} -gt 0 ]; then
+                    echo "Secret $SECRET_NAME already exists with a non-empty jwt-secret value"
+                    exit 0
+                  fi
+                fi
+                echo "Secret $SECRET_NAME exists but jwt-secret is empty, will generate and patch..."
               fi
               
               echo "Generating random JWT secret..."
               # Generate a random 32-character string using date, random, and sha256
               JWT_SECRET=$(date +%s%N | sha256sum | base64 | head -c 32)
               
-              # Create secret manifest
-              cat <<EOF | kubectl create -f -
+              if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+                # Secret exists but is empty, patch it
+                echo "Patching existing secret with generated JWT secret..."
+                kubectl patch secret "$SECRET_NAME" -p "{\"data\":{\"jwt-secret\":\"$(echo -n "$JWT_SECRET" | base64)\"}}"
+                echo "Secret $SECRET_NAME patched successfully"
+              else
+                # Secret doesn't exist, create it
+                cat <<EOF | kubectl create -f -
               apiVersion: v1
               kind: Secret
               metadata:
@@ -47,6 +61,6 @@ spec:
               stringData:
                 jwt-secret: "$JWT_SECRET"
               EOF
-              
-              echo "Secret $SECRET_NAME created successfully"
+                echo "Secret $SECRET_NAME created successfully"
+              fi
 {{- end }}
