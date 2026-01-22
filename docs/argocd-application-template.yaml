@@ -12,6 +12,7 @@ spec:
     targetRevision: HEAD
     path: ${CHART_PATH}
     helm:
+      releaseName: ${APP_NAME}
       valueFiles:
         - values.yaml
   destination:

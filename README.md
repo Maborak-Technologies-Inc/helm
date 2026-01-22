@@ -1,247 +1,470 @@
 # Helm Charts Repository
 
-A production-ready Helm charts repository providing enterprise-grade Kubernetes deployments for monitoring, observability, and application stacks. This repository follows GitOps best practices and is designed for automated deployment workflows with Argo CD.
+## Overview
 
-## Repository Overview
+This repository provides production-ready Helm charts for deploying enterprise-grade applications on Kubernetes. Charts are designed for GitOps workflows, security-first operations, and operational excellence at scale.
 
-This repository contains standardized Helm charts for deploying complex application stacks on Kubernetes. All charts are designed with production-grade defaults, security best practices, and operational excellence in mind.
+### Purpose
 
-### Intended Use Cases
+The repository serves as the centralized source of truth for Kubernetes application deployments. All charts are production-validated, security-hardened, and designed for automated deployment via Argo CD.
 
-- **Production Deployments**: Charts are tested and validated for production workloads
-- **GitOps Workflows**: Full compatibility with Argo CD and other GitOps tools
-- **Multi-Environment Management**: Support for environment-specific configurations
-- **Enterprise Operations**: Designed for SRE teams managing large-scale Kubernetes infrastructure
+### Intended Audience
 
-### Design Philosophy
+- Platform engineers and SRE teams managing Kubernetes infrastructure
+- DevOps engineers implementing GitOps workflows
+- Security teams reviewing deployment configurations
+- Architects designing multi-service application deployments
 
-- **Reliability**: Health checks, resource limits, and graceful shutdowns configured by default
-- **Scalability**: Horizontal Pod Autoscaling (HPA) support and configurable resource requirements
-- **Security**: RBAC, service accounts, and secrets management built-in
-- **GitOps-Ready**: All charts support declarative deployment via Argo CD
-- **Observability**: Structured logging, health endpoints, and metrics exposure
+### Scope
+
+This repository includes:
+- Production-ready Helm charts with secure defaults
+- GitOps-compatible configurations for Argo CD
+- Network isolation and security policies
+- Operational best practices and documentation
+
+### Non-Goals
+
+- Development environment quick-start guides
+- Tutorial content for Kubernetes beginners
+- Non-production deployment patterns
+- Experimental or alpha features
+
+## Design Principles
+
+### GitOps-First
+
+All charts are designed for declarative GitOps workflows. The desired state is defined in Git and automatically synchronized to clusters via Argo CD. Manual `kubectl` operations are discouraged in production.
+
+### Secure by Default
+
+Charts implement security best practices by default:
+- Least-privilege ServiceAccounts with explicit RBAC
+- NetworkPolicies restricting pod-to-pod communication
+- Pod security contexts preventing privilege escalation
+- Secrets management via Kubernetes Secrets (never in values.yaml)
+- Image pull policies enforcing image verification
+
+### Consistency and Standardization
+
+All charts follow consistent patterns:
+- Standardized resource naming via Helm helpers
+- Uniform labeling and annotation schemes
+- Consistent configuration structure across charts
+- Predictable resource organization
+
+### Operational Clarity
+
+Charts expose operational concerns explicitly:
+- Health checks configured for all services
+- Resource limits and requests defined
+- Horizontal Pod Autoscaling (HPA) support
+- Pod Disruption Budgets (PDB) for availability
+- Structured logging and observability endpoints
+
+### Architectural Transparency
+
+Charts document architectural decisions:
+- Service dependencies and communication patterns
+- Network topology and ingress paths
+- Storage requirements and data persistence
+- External dependencies and integration points
+
+## Repository Structure
+
+```
+.
+├── charts/
+│   ├── amazon-watcher-stack/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
+│   │       ├── _helpers.tpl
+│   │       └── [resource templates]
+│   └── zabbix/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+│           └── [resource templates]
+├── docs/
+│   ├── [deployment scripts and documentation]
+└── README.md
+```
+
+### Chart Structure Expectations
+
+Each chart must include:
+- `Chart.yaml`: Chart metadata, version, and dependencies
+- `values.yaml`: Comprehensive default values with documentation
+- `templates/`: Kubernetes resource templates
+- `templates/_helpers.tpl`: Reusable template functions
+- `templates/NOTES.txt`: Post-installation instructions (optional)
+
+### Documentation Requirements
+
+Per-chart documentation should cover:
+- Architecture and component relationships
+- Configuration reference for all values
+- Security considerations and RBAC requirements
+- Network policies and communication patterns
+- Storage requirements and data persistence
+- Upgrade and migration procedures
 
 ## Available Helm Charts
 
-| Chart Name | Description | Kubernetes Versions | Key Features | Production Readiness |
-|------------|-------------|---------------------|--------------|---------------------|
-| `amazon-watcher-stack` | Complete Amazon product monitoring stack with backend API, web UI, screenshot service, and PostgreSQL database | 1.24+ | Multi-service architecture, Ingress support, Argo Rollouts, HPA, persistent storage | Yes |
-| `zabbix` | Zabbix monitoring solution with server, web UI, and MariaDB database | 1.24+ | Full Zabbix stack, persistent storage, RBAC, configurable resources | Yes |
+| Chart Name | Description | Kubernetes Versions | Key Features | Security Posture | Production Readiness |
+|------------|-------------|---------------------|--------------|------------------|---------------------|
+| `amazon-watcher-stack` | Multi-service application stack for Amazon product monitoring with backend API, web UI, screenshot service, and PostgreSQL database | 1.24+ | Argo Rollouts, HPA, NetworkPolicies, Pod Disruption Budgets, Istio integration, persistent storage | ServiceAccount with RBAC, NetworkPolicies, Pod security contexts, secrets management | Production-ready |
+| `zabbix` | Zabbix monitoring solution with server, web UI, and MariaDB database | 1.24+ | Persistent storage, RBAC, configurable resources, health checks | ServiceAccount with RBAC, secrets management | Production-ready |
 
-## Chart Details
+### Chart Details
 
-### amazon-watcher-stack
+#### amazon-watcher-stack
 
-#### Purpose and Architecture
+**Architecture**: Microservices-based application with four primary components:
+- Backend API: FastAPI/Uvicorn RESTful service
+- Web UI: React frontend served via NGINX
+- Screenshot Service: Headless browser service using Playwright/Chromium
+- PostgreSQL Database: Stateful database for application data
 
-The `amazon-watcher-stack` chart deploys a complete microservices-based application for monitoring Amazon product availability and price tracking. The architecture consists of four primary components:
+**Key Features**:
+- Argo Rollouts for advanced deployment strategies (canary, blue-green)
+- Horizontal Pod Autoscaling (HPA) for all services
+- NetworkPolicies for pod-to-pod communication restrictions
+- Pod Disruption Budgets for high availability
+- Optional Istio service mesh integration (VirtualService, DestinationRule, Telemetry)
+- Persistent storage with configurable storage classes
+- Ingress support with TLS termination
 
-- **Backend API**: RESTful API service built on FastAPI/Uvicorn, handling product monitoring logic, database operations, and screenshot orchestration
-- **Web UI**: React-based frontend application served via NGINX
-- **Screenshot Service**: Headless browser service for capturing product pages using Playwright/Chromium
-- **PostgreSQL Database**: Stateful database for storing product data, price history, and application state
+**Security Features**:
+- Dedicated ServiceAccount per component
+- RBAC for JWT secret generation (least-privilege)
+- NetworkPolicies restricting ingress/egress traffic
+- Pod security contexts preventing privilege escalation
+- Secrets stored in Kubernetes Secrets
+- Optional Istio mTLS for service-to-service communication
 
-All components are deployed as separate Kubernetes resources with independent scaling and configuration capabilities.
+#### zabbix
 
-#### Key Features
+**Architecture**: Monitoring stack with three components:
+- Zabbix Server: Core monitoring engine
+- Zabbix UI: Web-based management interface
+- MariaDB: Database backend
 
-- **Multi-Service Deployment**: Independent Deployments for backend, UI, and screenshot services
-- **Argo Rollouts Integration**: Screenshot service uses Argo Rollouts for advanced deployment strategies (canary, blue-green)
-- **Horizontal Pod Autoscaling**: Configurable HPA for screenshot service based on CPU and memory metrics
-- **Ingress Support**: Optional Kubernetes Ingress resources with configurable ingress class
-- **Persistent Storage**: PVC support for screenshot storage and database data
-- **Health Checks**: Configurable liveness and readiness probes for all services
-- **Resource Management**: CPU and memory limits/requests configurable per component
-- **Service Account**: Dedicated service account with configurable RBAC
-- **Secrets Management**: Kubernetes Secrets for database credentials and JWT tokens
+**Key Features**:
+- Persistent storage for database and configuration
+- Configurable resource limits and requests
+- Health checks for all components
+- RBAC for service account permissions
 
-#### Configuration Highlights
+**Security Features**:
+- ServiceAccount with explicit RBAC
+- Secrets management for database credentials
+- Pod security contexts
 
-The chart exposes comprehensive configuration through `values.yaml`:
+## Architecture Overview
 
-- **Component Toggles**: Enable/disable individual services (backend, UI, screenshot, database)
-- **Replica Configuration**: Independent replica counts per service
-- **Image Management**: Configurable container images with pull policies
-- **Resource Allocation**: Per-service CPU and memory limits/requests
-- **Ingress Configuration**: Domain names, TLS settings, and ingress class selection
-- **Database Configuration**: PostgreSQL version, credentials, storage, and connection pooling
-- **Environment Variables**: Extensive environment variable configuration for all services
-- **Autoscaling**: HPA configuration with min/max replicas and target utilization
-- **Rollout Strategy**: Optional canary or blue-green deployment strategies
+### Helm, Kubernetes, and Argo CD Interaction
 
-#### Security Considerations
+```
+┌─────────────────┐
+│   Git Repository │
+│  (Source of Truth)│
+└────────┬─────────┘
+         │
+         │ Git Push
+         ▼
+┌─────────────────┐
+│   Argo CD Server │
+│  (GitOps Controller)│
+└────────┬─────────┘
+         │
+         │ Render Helm Charts
+         │ Apply to Cluster
+         ▼
+┌─────────────────┐
+│  Kubernetes API  │
+│     Server       │
+└────────┬─────────┘
+         │
+         │ Create/Update Resources
+         ▼
+┌─────────────────┐
+│  Kubernetes      │
+│    Cluster       │
+│  (Running State) │
+└─────────────────┘
+```
 
-- Service accounts with least-privilege principles
-- Secrets stored in Kubernetes Secrets (not in values.yaml)
-- Configurable security contexts for pods and containers
-- Network policies support via service selectors
-- TLS/SSL support for Ingress resources
-- JWT-based authentication for backend API
+### Deployment Lifecycle
 
-#### Resource Requirements
+1. **Git Commit**: Changes committed to Git repository
+2. **Argo CD Detection**: Argo CD detects changes via webhook or polling
+3. **Helm Rendering**: Argo CD renders Helm templates with values
+4. **Diff Calculation**: Argo CD compares desired state (Git) with live state (cluster)
+5. **Sync Operation**: Argo CD applies changes to cluster via Kubernetes API
+6. **Resource Creation**: Kubernetes controllers create/update resources
+7. **Health Monitoring**: Argo CD monitors resource health and reports status
 
-Minimum cluster resources for a standard deployment:
+### Assumptions
 
-- **Backend**: 512Mi memory, 500m CPU (requests)
-- **UI**: 512Mi memory, 100m CPU (requests)
-- **Screenshot**: 1Gi memory, 500m CPU (requests)
-- **Database**: 512Mi memory, 500m CPU (requests)
-- **Storage**: 10Gi for database, 5Gi for screenshot storage
+- Kubernetes cluster version 1.24 or higher
+- Argo CD installed and configured in the cluster
+- Metrics Server installed for HPA functionality
+- Storage classes configured for persistent volumes
+- Ingress controller installed (if Ingress resources are used)
+- NetworkPolicies supported by CNI (if NetworkPolicies are enabled)
+- Service mesh installed (if Istio resources are used)
 
-Total minimum: ~3Gi memory, ~1.6 CPU cores, 15Gi storage.
+### Constraints
 
-#### Dependencies
+- Charts assume cluster-admin or equivalent permissions for initial Argo CD setup
+- NetworkPolicies require CNI support (may not work in all environments)
+- Persistent storage requires appropriate StorageClass configuration
+- Argo Rollouts requires CRD installation
+- Istio resources require Istio service mesh installation
 
-- **Kubernetes**: 1.24 or higher
-- **Argo Rollouts**: Required for screenshot service (CRD: `rollouts.argoproj.io`)
-- **Ingress Controller**: Optional, required if `ingress.enabled=true` (NGINX, Traefik, etc.)
-- **Storage Class**: Required for persistent volumes (database and screenshot storage)
-- **Metrics Server**: Required for HPA functionality
+## Network Architecture & Diagrams
 
-### zabbix
+### Service Communication Flow
 
-#### Purpose and Architecture
+```mermaid
+graph TB
+    subgraph "External"
+        User[User Browser]
+        Internet[Internet]
+    end
+    
+    subgraph "Ingress Layer"
+        Ingress[NGINX Ingress Controller]
+    end
+    
+    subgraph "Application Namespace"
+        subgraph "Frontend"
+            UI[UI Service<br/>NGINX]
+        end
+        
+        subgraph "Backend Services"
+            Backend[Backend API<br/>FastAPI/Uvicorn]
+            CLI[CLI Rollout<br/>Background Jobs]
+            CronJob[CronJob<br/>Scheduled Tasks]
+        end
+        
+        subgraph "Supporting Services"
+            Screenshot[Screenshot Service<br/>Playwright/Chromium]
+            DB[(PostgreSQL<br/>Database)]
+        end
+    end
+    
+    subgraph "Storage"
+        PVC[PersistentVolumeClaim<br/>Shared Storage]
+    end
+    
+    User -->|HTTPS| Internet
+    Internet -->|HTTPS| Ingress
+    Ingress -->|HTTP| UI
+    UI -->|HTTP| Backend
+    Backend -->|HTTP| Screenshot
+    Backend -->|PostgreSQL| DB
+    CLI -->|HTTP| Backend
+    CLI -->|HTTP| Screenshot
+    CLI -->|PostgreSQL| DB
+    CLI -->|Read/Write| PVC
+    CronJob -->|HTTP| Backend
+    CronJob -->|PostgreSQL| DB
+    Backend -->|Read/Write| PVC
+    Screenshot -->|Read/Write| PVC
+```
 
-The `zabbix` chart deploys a complete Zabbix monitoring solution consisting of:
+### Network Policy Boundaries
 
-- **Zabbix Server**: Core monitoring engine processing metrics and triggers
-- **Zabbix UI**: Web-based user interface for configuration and visualization
-- **MariaDB**: Relational database storing Zabbix configuration and historical data
+```mermaid
+graph LR
+    subgraph "Ingress Namespace"
+        IC[Ingress Controller]
+    end
+    
+    subgraph "Application Namespace"
+        subgraph "UI Pods"
+            UI[UI Service]
+        end
+        
+        subgraph "Backend Pods"
+            BE[Backend API]
+            CLI[CLI Rollout]
+            CJ[CronJob]
+        end
+        
+        subgraph "Screenshot Pods"
+            SS[Screenshot Service]
+        end
+        
+        subgraph "Database Pods"
+            DB[PostgreSQL]
+        end
+    end
+    
+    IC -.->|Allow Ingress| UI
+    UI -.->|Allow Egress| BE
+    BE -.->|Allow Egress| SS
+    BE -.->|Allow Egress| DB
+    CLI -.->|Allow Egress| BE
+    CLI -.->|Allow Egress| SS
+    CLI -.->|Allow Egress| DB
+    CJ -.->|Allow Egress| BE
+    CJ -.->|Allow Egress| DB
+    
+    style UI fill:#e1f5ff
+    style BE fill:#fff4e1
+    style SS fill:#ffe1f5
+    style DB fill:#e1ffe1
+```
 
-The chart uses StatefulSets for database persistence and Deployments for stateless components.
+### Network Policy Rules
 
-#### Key Features
+**UI NetworkPolicy**:
+- Ingress: Allow from Ingress controller namespace
+- Egress: Allow to Backend service, DNS, and external HTTPS
 
-- **Complete Zabbix Stack**: Server, UI, and database in a single chart
-- **Persistent Storage**: PersistentVolume and PersistentVolumeClaim for MariaDB data
-- **RBAC Configuration**: Service accounts, roles, and role bindings
-- **Configurable Resources**: CPU and memory limits per component
-- **Replica Scaling**: Independent replica configuration for server and UI
-- **ConfigMap Management**: Centralized configuration via ConfigMap
+**Backend NetworkPolicy**:
+- Ingress: Allow from UI pods, Ingress controller namespace
+- Egress: Allow to Screenshot service, Database service, DNS, and external HTTPS
 
-#### Configuration Highlights
+**Screenshot NetworkPolicy**:
+- Ingress: Allow from Backend pods, CLI pods
+- Egress: Allow to external HTTPS (for web scraping), DNS
 
-- **Replica Management**: Separate replica counts for server, UI, and MariaDB
-- **Resource Allocation**: Per-component resource limits and requests
-- **Storage Configuration**: Persistent volume size and storage class selection
-- **Database Settings**: MariaDB version and configuration options
-- **Service Configuration**: Service types and port configurations
+**Database NetworkPolicy**:
+- Ingress: Allow from Backend pods, CLI pods, CronJob pods
+- Egress: Allow DNS only
 
-#### Security Considerations
+**CLI NetworkPolicy**:
+- Ingress: None (no incoming traffic)
+- Egress: Allow to Backend service, Screenshot service, Database service, DNS
 
-- RBAC with dedicated service accounts
-- Database credentials in Kubernetes Secrets
-- Network isolation via service selectors
-- Configurable security contexts
+### Ingress Paths
 
-#### Resource Requirements
-
-Minimum cluster resources:
-
-- **Zabbix Server**: 512Mi memory, 200m CPU (requests)
-- **Zabbix UI**: 256Mi memory, 100m CPU (requests)
-- **MariaDB**: Variable based on data volume
-
-#### Dependencies
-
-- **Kubernetes**: 1.24 or higher
-- **Storage Class**: Required for MariaDB persistent storage
-- **PersistentVolume**: Cluster-scoped resource (requires appropriate permissions)
+```mermaid
+graph LR
+    subgraph "External"
+        User[User]
+    end
+    
+    subgraph "Ingress"
+        Ingress[Ingress Controller<br/>LoadBalancer IP]
+    end
+    
+    subgraph "Application"
+        UI[UI Service<br/>Port 80]
+        Backend[Backend Service<br/>Port 9000]
+    end
+    
+    User -->|https://ui.example.com| Ingress
+    User -->|https://api.example.com| Ingress
+    Ingress -->|http://ui:80| UI
+    Ingress -->|http://backend:9000| Backend
+```
 
 ## Installation with Helm
 
 ### Prerequisites
 
-- Kubernetes cluster (1.24 or higher)
+- Kubernetes cluster (version 1.24 or higher)
 - Helm 3.x installed
 - `kubectl` configured with cluster access
-- Appropriate RBAC permissions for creating resources in target namespace
+- Appropriate RBAC permissions for target namespace
+- Storage class configured (for charts requiring persistent storage)
+- Metrics Server installed (for HPA functionality)
 
-### Add Helm Repository
-
-This repository can be used directly from Git or packaged as a Helm repository. For Git-based usage:
+### Add Repository
 
 ```bash
-# Clone the repository
-git clone git@github.com:Maborak-Technologies-Inc/helm.git
-cd helm
+helm repo add maborak-helm https://charts.maborak.com
+helm repo update
+```
 
-# Install directly from local chart
-helm install <release-name> ./charts/<chart-name> \
+### Install Chart
+
+**Basic Installation**:
+
+```bash
+helm install <release-name> maborak-helm/amazon-watcher-stack \
   --namespace <namespace> \
   --create-namespace
 ```
 
-### Install Example
-
-**Amazon Watcher Stack:**
+**Installation with Custom Values**:
 
 ```bash
-helm install amazon-watcher-stack ./charts/amazon-watcher-stack \
-  --namespace production \
+helm install <release-name> maborak-helm/amazon-watcher-stack \
+  --namespace <namespace> \
   --create-namespace \
-  --set ingress.className=nginx \
-  --set ingress.enabled=true
-```
-
-**Zabbix:**
-
-```bash
-helm install zabbix ./charts/zabbix \
-  --namespace monitoring \
-  --create-namespace \
-  --set storage.storageClass=fast-ssd
-```
-
-### Upgrade Example
-
-```bash
-# Upgrade with new values
-helm upgrade amazon-watcher-stack ./charts/amazon-watcher-stack \
-  --namespace production \
-  --set backend.replicas=3 \
-  --set ui.replicas=2
-
-# Upgrade with values file
-helm upgrade zabbix ./charts/zabbix \
-  --namespace monitoring \
   -f values-production.yaml
 ```
 
-### Uninstall Example
+**Installation with Value Overrides**:
 
 ```bash
-helm uninstall amazon-watcher-stack --namespace production
-helm uninstall zabbix --namespace monitoring
+helm install <release-name> maborak-helm/amazon-watcher-stack \
+  --namespace <namespace> \
+  --create-namespace \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set backend.replicas=3
 ```
 
-### Versioning and Values Overrides
-
-Charts follow semantic versioning (SemVer). Override default values using:
-
-- **Command-line flags**: `--set key=value`
-- **Values files**: `-f values.yaml` or `--values values.yaml`
-- **Multiple sources**: Combine multiple `-f` flags (later files override earlier ones)
-
-Example with multiple overrides:
+### Upgrade Chart
 
 ```bash
-helm install amazon-watcher-stack ./charts/amazon-watcher-stack \
-  --namespace production \
-  -f charts/amazon-watcher-stack/values.yaml \
-  -f values-production.yaml \
-  --set ingress.enabled=true
+helm upgrade <release-name> maborak-helm/amazon-watcher-stack \
+  --namespace <namespace> \
+  -f values-production.yaml
+```
+
+### Uninstall Chart
+
+```bash
+helm uninstall <release-name> --namespace <namespace>
+```
+
+**Note**: Uninstalling a chart does not automatically delete PersistentVolumeClaims. Manually delete PVCs if data cleanup is required:
+
+```bash
+kubectl delete pvc -l app.kubernetes.io/instance=<release-name> -n <namespace>
+```
+
+### Versioning and Rollback
+
+**View Release History**:
+
+```bash
+helm history <release-name> --namespace <namespace>
+```
+
+**Rollback to Previous Version**:
+
+```bash
+helm rollback <release-name> <revision-number> --namespace <namespace>
+```
+
+**Rollback to Last Version**:
+
+```bash
+helm rollback <release-name> --namespace <namespace>
 ```
 
 ## GitOps Deployment with Argo CD
 
-### GitOps Approach
+### GitOps Principles
 
-This repository is designed for GitOps workflows where the desired state is declared in Git and automatically synchronized to the cluster. Argo CD monitors the repository and ensures the cluster matches the declared configuration.
+GitOps is an operational framework that takes DevOps best practices used for application development and applies them to infrastructure automation. Key principles:
+
+- **Declarative**: The entire system is described declaratively
+- **Versioned**: The desired state is versioned in Git
+- **Automated**: Changes are automatically applied to the system
+- **Continuously Reconciled**: The system continuously ensures the actual state matches the desired state
 
 ### Production-Grade Argo CD Application Manifest
-
-**Example: Amazon Watcher Stack**
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -254,19 +477,18 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:Maborak-Technologies-Inc/helm.git
+    repoURL: https://github.com/org/helm-charts.git
     targetRevision: main
     path: charts/amazon-watcher-stack
     helm:
+      releaseName: amazon-watcher-stack-prod
       valueFiles:
-      - values.yaml
+        - values.yaml
       parameters:
-      - name: ingress.enabled
-        value: "true"
-      - name: ingress.className
-        value: "nginx"
-      - name: backend.replicas
-        value: "3"
+        - name: ingress.enabled
+          value: "true"
+        - name: ingress.className
+          value: "nginx"
   destination:
     server: https://kubernetes.default.svc
     namespace: production
@@ -276,16 +498,13 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-    - CreateNamespace=true
-    - PrunePropagationPolicy=foreground
-    - PruneLast=true
+      - CreateNamespace=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  # Ignore replicas field for Rollouts when HPA is managing them
   ignoreDifferences:
     - group: argoproj.io
       kind: Rollout
@@ -293,72 +512,33 @@ spec:
         - /spec/replicas
 ```
 
-**Example: Zabbix**
+### Automated Sync
 
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: zabbix-prod
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: git@github.com:Maborak-Technologies-Inc/helm.git
-    targetRevision: main
-    path: charts/zabbix
-    helm:
-      parameters:
-      - name: storage.storageClass
-        value: "fast-ssd"
-      - name: replicas.zabbixServer
-        value: "2"
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: monitoring
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
-```
+**Enabled Features**:
+- `prune: true`: Automatically delete resources removed from Git
+- `selfHeal: true`: Automatically revert manual changes to match Git state
+- `allowEmpty: false`: Prevent deletion of all resources
 
-### Deploying via Argo CD CLI
+**Sync Options**:
+- `CreateNamespace=true`: Automatically create target namespace if missing
 
-```bash
-# Create application
-argocd app create amazon-watcher-stack-prod \
-  --repo git@github.com:Maborak-Technologies-Inc/helm.git \
-  --path charts/amazon-watcher-stack \
-  --dest-server https://kubernetes.default.svc \
-  --dest-namespace production \
-  --sync-policy automated \
-  --self-heal \
-  --auto-prune
+### Namespace Ownership and Environment Separation
 
-# Sync application
-argocd app sync amazon-watcher-stack-prod
-```
+Each Argo CD Application should target a dedicated namespace per environment:
 
-### Namespace Handling
+- **Development**: `dev` namespace, application name `amazon-watcher-stack-dev`
+- **Staging**: `staging` namespace, application name `amazon-watcher-stack-staging`
+- **Production**: `production` namespace, application name `amazon-watcher-stack-prod`
 
-Argo CD can automatically create namespaces if `CreateNamespace=true` is set in sync options. Ensure the Argo CD service account has appropriate permissions:
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: argocd-application-controller
-rules:
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["create", "get", "list"]
-```
+This separation ensures:
+- Resource isolation between environments
+- Independent scaling and configuration
+- Clear ownership and responsibility
+- Reduced risk of cross-environment impact
 
 ## Configuration & Customization
 
-### Overriding Values
+### values.yaml Override Strategy
 
 **Method 1: Values File (Recommended for GitOps)**
 
@@ -372,29 +552,44 @@ backend:
     limits:
       memory: 2Gi
       cpu: 2000m
+    requests:
+      memory: 1Gi
+      cpu: 1000m
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
 ingress:
   enabled: true
   className: "nginx"
+  tls:
+    enabled: true
+
+global:
+  storage:
+    enabled: true
+    storageClassName: "fast-ssd"
+    size: 50Gi
 ```
 
 Apply via Helm or Argo CD:
 
 ```bash
-helm install amazon-watcher-stack ./charts/amazon-watcher-stack \
+helm install <release-name> ./charts/amazon-watcher-stack \
   -f values-production.yaml
 ```
 
 **Method 2: Helm Parameters (Quick Overrides)**
 
 ```bash
-helm install amazon-watcher-stack ./charts/amazon-watcher-stack \
+helm install <release-name> ./charts/amazon-watcher-stack \
   --set backend.replicas=3 \
   --set ingress.enabled=true
 ```
 
 **Method 3: Argo CD Parameters**
-
-Parameters set in Argo CD Application manifest override values.yaml:
 
 ```yaml
 spec:
@@ -403,899 +598,362 @@ spec:
       parameters:
       - name: backend.replicas
         value: "3"
+      - name: ingress.enabled
+        value: "true"
 ```
 
-### Environment-Specific Configurations
+### Environment-Specific Configuration
 
-**Development:**
+**Development**:
+- Minimal replicas (1-2 per service)
+- Lower resource limits
+- Ingress disabled or using local development tools
+- Debug logging enabled
+- Development image tags
 
-```yaml
-backend:
-  replicas: 1
-  resources:
-    requests:
-      memory: 256Mi
-      cpu: 100m
-ingress:
-  enabled: false
-```
+**Production**:
+- Higher replica counts with HPA
+- Production-grade resource limits
+- Ingress enabled with TLS
+- Production logging levels
+- Stable image tags with digest pinning
 
-**Production:**
+### Production Hardening Recommendations
 
-```yaml
-backend:
-  replicas: 3
-  resources:
-    limits:
-      memory: 2Gi
-      cpu: 2000m
-ingress:
-  enabled: true
-  className: "nginx"
-  tls:
-    enabled: true
-screenshot:
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-```
-
-### Best Practices for Production
-
-1. **Resource Limits**: Always set resource limits to prevent resource exhaustion
-2. **Health Checks**: Enable and configure appropriate health check timeouts
-3. **Replica Counts**: Use HPA for variable workloads, fixed replicas for stable services
-4. **Storage**: Use appropriate storage classes with backup strategies
-5. **Secrets**: Never commit secrets to Git; use external secret management
-6. **Ingress**: Enable TLS/SSL for all production Ingress resources
-7. **Monitoring**: Configure appropriate resource requests for monitoring overhead
-8. **Namespaces**: Isolate environments using separate namespaces
+1. **Resource Limits**: Always set both requests and limits for all containers
+2. **HPA Configuration**: Enable HPA for all stateless services
+3. **Pod Disruption Budgets**: Configure PDBs for high availability
+4. **NetworkPolicies**: Enable NetworkPolicies for network isolation
+5. **Security Contexts**: Use non-root users and read-only root filesystems where possible
+6. **Image Security**: Use image digests instead of tags, enable image scanning
+7. **Secrets Management**: Use external secret management (e.g., Sealed Secrets, External Secrets Operator)
+8. **Monitoring**: Enable Prometheus metrics and configure alerting
+9. **Backup Strategy**: Implement backup procedures for persistent data
+10. **Disaster Recovery**: Document and test recovery procedures
 
 ## Versioning & Compatibility
 
-### Helm Chart Versioning Strategy
+### Semantic Versioning
 
-Charts follow [Semantic Versioning](https://semver.org/) (SemVer):
+Charts follow [Semantic Versioning](https://semver.org/) (SemVer) principles:
 
-- **Major version** (X.0.0): Breaking changes requiring manual intervention
-- **Minor version** (0.X.0): New features, backward compatible
-- **Patch version** (0.0.X): Bug fixes, backward compatible
-
-Chart versions are independent of application versions. The `appVersion` field in Chart.yaml indicates the application version the chart deploys.
+- **MAJOR**: Breaking changes requiring manual intervention
+- **MINOR**: New features, backward-compatible
+- **PATCH**: Bug fixes, backward-compatible
 
 ### Kubernetes Compatibility Guarantees
 
-- **Minimum Kubernetes Version**: 1.24
-- **API Compatibility**: Charts use stable Kubernetes APIs (apps/v1, networking.k8s.io/v1)
-- **Deprecation Policy**: Charts are updated before Kubernetes API deprecations take effect
-- **Testing**: Charts are tested against the minimum supported version and latest stable version
+- Charts are tested against Kubernetes 1.24+
+- API versions used are compatible with the minimum Kubernetes version
+- Deprecated APIs are migrated before removal
+- Breaking changes are documented in CHANGELOG.md
 
-### Version Support Matrix
+### Upgrade Policy
 
-| Chart | Chart Version | Kubernetes | Status |
-|-------|--------------|------------|--------|
-| amazon-watcher-stack | 0.1.0 | 1.24+ | Supported |
-| zabbix | 0.1.1 | 1.24+ | Supported |
+**Minor and Patch Versions**:
+- Safe to upgrade without manual intervention
+- Argo CD automated sync will apply upgrades
+- Rollback available via `helm rollback` or Argo CD
 
-## Security & Compliance
+**Major Versions**:
+- Require manual review and testing
+- Breaking changes documented in upgrade guides
+- Migration scripts provided when applicable
+
+### Deprecation Policy
+
+- Deprecated features are marked in values.yaml with `DEPRECATED` comments
+- Deprecated features remain functional for at least one major version
+- Removal is announced in release notes and CHANGELOG.md
+
+## Security Considerations
 
 ### Secure Defaults
 
 All charts implement security best practices by default:
 
-- **Non-root Containers**: Security contexts configured to run as non-root users where possible
-- **Read-only Root Filesystems**: Configurable read-only root filesystems for stateless containers
-- **Drop Capabilities**: Unnecessary Linux capabilities dropped by default
-- **Resource Limits**: CPU and memory limits prevent resource exhaustion attacks
-- **Network Policies**: Service selectors support network policy implementation
+- **ServiceAccounts**: Dedicated ServiceAccount per component (no default ServiceAccount)
+- **RBAC**: Least-privilege Role and RoleBinding configurations
+- **NetworkPolicies**: Optional but recommended for network isolation
+- **Pod Security Contexts**: Non-root users, no privilege escalation
+- **Secrets**: Never stored in values.yaml, always in Kubernetes Secrets
+- **Image Pull Policies**: `IfNotPresent` or `Always` to enforce image verification
 
-### RBAC Considerations
+### RBAC and ServiceAccount Model
 
-Charts create dedicated service accounts with minimal required permissions:
+**ServiceAccount Creation**:
+- Each chart creates a dedicated ServiceAccount
+- ServiceAccount name matches the release name
+- ServiceAccounts are namespace-scoped
 
-- **Service Accounts**: Created per chart instance with unique names
-- **Role Bindings**: Cluster-scoped or namespace-scoped based on requirements
-- **Least Privilege**: Service accounts granted only necessary permissions
+**RBAC Permissions**:
+- Roles define specific permissions required by components
+- RoleBindings associate Roles with ServiceAccounts
+- Permissions follow least-privilege principle
+- Cluster-wide permissions avoided unless necessary
 
-Example RBAC configuration:
+**Example RBAC Structure**:
 
 ```yaml
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: <release-name>
+  namespace: <namespace>
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: <release-name>
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: <release-name>
+subjects:
+  - kind: ServiceAccount
+    name: <release-name>
+roleRef:
+  kind: Role
+  name: <release-name>
+  apiGroup: rbac.authorization.k8s.io
 ```
 
-### Secrets Handling Recommendations
+### NetworkPolicies
 
-**Do:**
+NetworkPolicies provide network-level isolation:
 
-- Store secrets in Kubernetes Secrets (not in values.yaml)
-- Use external secret management systems (Sealed Secrets, External Secrets Operator, Vault)
-- Rotate secrets regularly
-- Use separate secrets per environment
+- **Default Deny**: All traffic denied unless explicitly allowed
+- **Ingress Rules**: Define allowed incoming traffic sources
+- **Egress Rules**: Define allowed outgoing traffic destinations
+- **Namespace Isolation**: Prevent cross-namespace communication unless required
 
-**Don't:**
+**NetworkPolicy Best Practices**:
+- Enable NetworkPolicies in production environments
+- Test NetworkPolicies in non-production first
+- Document required network paths
+- Use label selectors for flexible policy application
 
-- Commit secrets to Git repositories
-- Use default passwords in production
-- Share secrets across environments
-- Store secrets in ConfigMaps
+### Secrets Management
 
-**Example Secret Management:**
+**Kubernetes Secrets**:
+- Secrets stored in Kubernetes Secrets (not values.yaml)
+- Base64 encoding handled by Kubernetes
+- Secrets are namespace-scoped
+- Access controlled via RBAC
 
-```bash
-# Create secret from file
-kubectl create secret generic db-credentials \
-  --from-literal=username=admin \
-  --from-literal=password=$(openssl rand -base64 32) \
-  --namespace production
+**External Secret Management**:
+- Integration with Sealed Secrets for Git-based secret management
+- Integration with External Secrets Operator for cloud provider secret stores
+- Integration with HashiCorp Vault via CSI driver
 
-# Reference in values.yaml via existingSecret
-database:
-  existingSecret: db-credentials
+**Secret Rotation**:
+- Implement secret rotation procedures
+- Use init containers or sidecars for secret injection
+- Monitor secret expiration and rotation requirements
+
+### Image Security
+
+**Image Policies**:
+- Use image digests instead of tags for production
+- Enable image scanning in CI/CD pipelines
+- Use trusted image registries
+- Implement image signing and verification
+
+**Image Pull Policies**:
+- `Always`: Always pull latest image (recommended for production)
+- `IfNotPresent`: Pull if not present locally (development)
+- `Never`: Never pull (not recommended)
+
+### Pod Security Context
+
+**Security Context Configuration**:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
 ```
+
+**Best Practices**:
+- Run as non-root user
+- Drop all capabilities, add only required ones
+- Use read-only root filesystem where possible
+- Set appropriate fsGroup for volume access
+
+### Compliance and Audit Considerations
+
+**Audit Logging**:
+- Enable Kubernetes audit logging
+- Monitor RBAC permission usage
+- Track secret access patterns
+- Log all administrative operations
+
+**Compliance Requirements**:
+- Document security controls and configurations
+- Maintain security configuration baselines
+- Regular security reviews and assessments
+- Compliance with organizational security policies
+
+## Security Review Checklist
+
+Use this checklist when reviewing chart changes or new chart submissions:
+
+### Identity & Access Controls
+
+- [ ] ServiceAccount created for each component
+- [ ] ServiceAccount uses least-privilege RBAC
+- [ ] No use of `default` ServiceAccount
+- [ ] RBAC Roles define minimal required permissions
+- [ ] RoleBindings correctly associate Roles with ServiceAccounts
+- [ ] ClusterRoles avoided unless absolutely necessary
+- [ ] ServiceAccount annotations for cloud provider IAM (if applicable)
+
+### Network Restrictions
+
+- [ ] NetworkPolicies defined for all components
+- [ ] NetworkPolicies follow default-deny principle
+- [ ] Ingress rules explicitly define allowed sources
+- [ ] Egress rules explicitly define allowed destinations
+- [ ] Cross-namespace communication restricted
+- [ ] External network access limited to required endpoints
+- [ ] DNS access properly configured
+
+### Pod Security Settings
+
+- [ ] Pod security contexts configured
+- [ ] Containers run as non-root users
+- [ ] Privilege escalation disabled
+- [ ] Unnecessary capabilities dropped
+- [ ] Read-only root filesystem used where possible
+- [ ] Security contexts applied at both pod and container level
+- [ ] Host namespaces (PID, IPC, network) not shared
+
+### Secrets Handling
+
+- [ ] No secrets in values.yaml
+- [ ] Secrets stored in Kubernetes Secrets
+- [ ] Secret access controlled via RBAC
+- [ ] Secrets not logged or exposed in environment variables unnecessarily
+- [ ] Secret rotation procedures documented
+- [ ] External secret management integration considered
+
+### Supply Chain Security
+
+- [ ] Container images from trusted registries
+- [ ] Image digests used instead of tags (production)
+- [ ] Image scanning enabled in CI/CD
+- [ ] Dependencies documented and reviewed
+- [ ] Chart dependencies from trusted sources
+- [ ] SBOM (Software Bill of Materials) generated
+
+### Observability Requirements
+
+- [ ] Health checks (liveness, readiness) configured
+- [ ] Metrics endpoints exposed (if applicable)
+- [ ] Structured logging implemented
+- [ ] Log levels configurable
+- [ ] Tracing support considered (if applicable)
+- [ ] Monitoring and alerting integration points documented
 
 ## Contributing
 
-### Contribution Guidelines
+### Contribution Expectations
 
-Contributions to this repository are welcome. All contributions must follow these guidelines:
+All contributions must meet production-grade standards:
 
-1. **Code Quality**: All Helm templates must pass `helm lint`
-2. **Testing**: Test charts in a clean Kubernetes environment before submitting
-3. **Documentation**: Update README.md and chart-specific documentation
-4. **Versioning**: Follow SemVer for chart version updates
-5. **Security**: No secrets or sensitive data in commits
+- **Code Quality**: Follow Helm best practices and template patterns
+- **Documentation**: Update README, values.yaml comments, and per-chart docs
+- **Testing**: Validate charts in target Kubernetes versions
+- **Security**: Pass security review checklist
+- **Backward Compatibility**: Maintain compatibility or document breaking changes
 
-### Linting and Testing
+### Validation and Review Gates
 
-**Lint Charts:**
+**Pre-Submission Requirements**:
+1. `helm lint` passes without errors
+2. `helm template` renders valid Kubernetes manifests
+3. Charts install successfully in test cluster
+4. Security review checklist completed
+5. Documentation updated
 
-```bash
-helm lint ./charts/amazon-watcher-stack
-helm lint ./charts/zabbix
-```
+**Review Process**:
+1. Automated validation (linting, templating)
+2. Security review by security team
+3. Architecture review by platform team
+4. Documentation review
+5. Final approval and merge
 
-**Template Validation:**
+### Documentation Requirements
 
-```bash
-helm template amazon-watcher-stack ./charts/amazon-watcher-stack \
-  --debug \
-  --dry-run
-```
+**Required Documentation**:
+- Chart description in Chart.yaml
+- Comprehensive values.yaml with comments
+- Architecture diagrams (Mermaid format)
+- Security considerations section
+- Upgrade and migration guides (for major versions)
+- Troubleshooting guide for common issues
 
-**Dry-run Install:**
-
-```bash
-helm install amazon-watcher-stack ./charts/amazon-watcher-stack \
-  --namespace test \
-  --dry-run \
-  --debug
-```
-
-### Review Expectations
-
-- All pull requests require review from maintainers
-- Charts must pass linting and template validation
-- Documentation updates required for configuration changes
-- Breaking changes require migration guides
+**Documentation Standards**:
+- Clear, concise, and accurate
+- Examples for common use cases
+- Production hardening recommendations
+- Security best practices
+- Operational runbooks
 
 ## Support & Maintenance
 
 ### Issue Handling
 
-Issues are tracked in the repository's issue tracker. Priority is assigned based on:
-
-- **Critical**: Security vulnerabilities, data loss risks, complete service outages
-- **High**: Feature breakage, significant performance degradation
-- **Medium**: Minor bugs, documentation improvements
-- **Low**: Enhancement requests, non-critical improvements
-
-### Response Expectations
-
-- **Critical Issues**: Response within 4 business hours, resolution target 24 hours
-- **High Priority**: Response within 1 business day, resolution target 1 week
-- **Medium Priority**: Response within 3 business days, resolution target 2 weeks
-- **Low Priority**: Response within 1 week, resolution based on roadmap
-
-### Maintenance Windows
-
-Chart updates and security patches are released on a regular schedule:
-
-- **Security Patches**: Released as needed, typically within 48 hours of vulnerability disclosure
-- **Feature Releases**: Monthly release cycle for new features and enhancements
-- **Bug Fixes**: Released as patches (0.0.X) when issues are identified and resolved
-
-### Long-term Support
-
-- **Active Support**: Charts receive updates and security patches for 12 months from release
-- **Security-only Support**: Critical security patches for an additional 6 months
-- **Deprecation Notice**: 3 months advance notice before chart deprecation
-
----
-
-## RUNBOOK
-
-This section provides operational procedures for SRE and DevOps teams managing the Helm charts in production environments.
-
-### Table of Contents
-
-- [Health Checks & Monitoring](#health-checks--monitoring)
-- [Scaling Operations](#scaling-operations)
-- [Rollout Management](#rollout-management)
-- [Image Updates](#image-updates)
-- [Emergency Procedures](#emergency-procedures)
-- [Database Operations](#database-operations)
-- [CLI Operations](#cli-operations)
-- [Troubleshooting Procedures](#troubleshooting-procedures)
-- [Performance Tuning](#performance-tuning)
-
----
-
-### Health Checks & Monitoring
-
-#### Check Application Health
-
-```bash
-# Check all pods status
-kubectl get pods -n <namespace> -l app.kubernetes.io/instance=<release-name>
-
-# Check specific component
-kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend
-kubectl get pods -n <namespace> -l app.kubernetes.io/component=ui
-kubectl get pods -n <namespace> -l app.kubernetes.io/component=screenshot
-
-# Check pod health (ready, running, restarts)
-kubectl get pods -n <namespace> -o wide
-
-# Check pod events
-kubectl describe pod <pod-name> -n <namespace>
-
-# Check logs for errors
-kubectl logs -n <namespace> -l app.kubernetes.io/component=backend --tail=100 | grep -i error
-```
-
-#### Check Service Endpoints
-
-```bash
-# Check services
-kubectl get svc -n <namespace>
-
-# Check service endpoints
-kubectl get endpoints -n <namespace>
-
-# Test backend health endpoint
-kubectl exec -n <namespace> <backend-pod> -- curl -f http://localhost:9000/health
-
-# Test from cluster
-kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
-  curl http://<service-name>.<namespace>.svc.cluster.local:9000/health
-```
-
-#### Check ArgoCD Application Status
-
-```bash
-# Get application status
-argocd app get <app-name>
-
-# Check sync status
-argocd app get <app-name> -o jsonpath='{.status.sync.status}'
-
-# Check health status
-argocd app get <app-name> -o jsonpath='{.status.health.status}'
-
-# View application resources
-argocd app manifests <app-name>
-
-# Check sync history
-argocd app history <app-name>
-```
-
-#### Monitor Resource Usage
-
-```bash
-# Check CPU and memory usage
-kubectl top pods -n <namespace>
-
-# Check node resources
-kubectl top nodes
-
-# Check HPA status
-kubectl get hpa -n <namespace>
-
-# Watch HPA scaling in real-time
-watch -n 5 'kubectl get hpa -n <namespace>'
-```
-
----
-
-### Scaling Operations
-
-#### Manual Scaling
-
-**Using Helm:**
-```bash
-# Scale backend to 3 replicas
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set backend.replicas=3
-
-# Scale UI to 2 replicas
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set ui.replicas=2
-```
-
-**Using kubectl (temporary, will be overridden by ArgoCD):**
-```bash
-# Scale Rollout directly
-kubectl scale rollout <release-name>-backend -n <namespace> --replicas=3
-
-# Scale Deployment (if not using Rollout)
-kubectl scale deployment <release-name>-backend -n <namespace> --replicas=3
-```
-
-**Using ArgoCD:**
-```bash
-# Update values.yaml in Git, then sync
-argocd app sync <app-name>
-
-# Or set parameter directly (not recommended for GitOps)
-argocd app set <app-name> --helm-set backend.replicas=3
-```
-
-#### HPA Configuration
-
-**Check Current HPA Status:**
-```bash
-# Get HPA details
-kubectl get hpa -n <namespace>
-kubectl describe hpa <release-name>-screenshot -n <namespace>
-
-# Check scaling events
-kubectl get events -n <namespace> --field-selector involvedObject.name=<hpa-name> --sort-by='.lastTimestamp'
-```
-
-**HPA Thresholds:**
-- **Target CPU**: 50% of request (default)
-- **Min Replicas**: 1 (default)
-- **Max Replicas**: 10 (default)
-- **Scale Up**: Triggers when CPU > 50% for 15+ seconds
-- **Scale Down**: Triggers when CPU < 50% for 5+ minutes
-
-**Update HPA Configuration:**
-```bash
-# Update via Helm values.yaml
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set screenshot.autoscaling.minReplicas=2 \
-  --set screenshot.autoscaling.maxReplicas=20 \
-  --set screenshot.autoscaling.targetCPUUtilizationPercentage=70
-```
-
-**Disable HPA Temporarily:**
-```bash
-# Set global.hpa to false
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set global.hpa=false
-```
-
----
-
-### Rollout Management
-
-#### Check Rollout Status
-
-```bash
-# Get Rollout status
-kubectl get rollout <release-name>-screenshot -n <namespace>
-
-# Detailed Rollout info
-kubectl describe rollout <release-name>-screenshot -n <namespace>
-
-# Using Argo Rollouts plugin (if installed)
-kubectl argo rollouts get rollout <release-name>-screenshot -n <namespace>
-
-# Check Rollout history
-kubectl argo rollouts history <release-name>-screenshot -n <namespace>
-```
-
-#### Rollout Operations
-
-**Pause Rollout:**
-```bash
-# Pause canary rollout
-kubectl argo rollouts pause <release-name>-screenshot -n <namespace>
-
-# Resume rollout
-kubectl argo rollouts resume <release-name>-screenshot -n <namespace>
-```
-
-**Promote Canary:**
-```bash
-# Promote canary to stable (skip remaining steps)
-kubectl argo rollouts promote <release-name>-screenshot -n <namespace>
-```
-
-**Abort Rollout:**
-```bash
-# Abort current rollout and rollback
-kubectl argo rollouts abort <release-name>-screenshot -n <namespace>
-```
-
-**Rollback:**
-```bash
-# Rollback to previous revision
-kubectl argo rollouts undo <release-name>-screenshot -n <namespace>
-
-# Rollback to specific revision
-kubectl argo rollouts undo <release-name>-screenshot -n <namespace> --to-revision=2
-```
-
-#### Rollout Strategy Configuration
-
-**Canary Strategy (Progressive):**
-```yaml
-strategy:
-  canary:
-    steps:
-    - setWeight: 10
-    - pause: {}
-    - setWeight: 50
-    - pause: {duration: 5m}
-    - setWeight: 100
-```
-
-**Blue-Green Strategy:**
-```yaml
-strategy:
-  blueGreen:
-    activeService: screenshot
-    previewService: screenshot-preview
-    autoPromotionEnabled: false
-    scaleDownDelaySeconds: 30
-```
-
----
-
-### Image Updates
-
-#### Manual Image Update
-
-**Method 1: Update values.yaml in Git (Recommended for GitOps):**
-```bash
-# Edit values.yaml
-vim charts/amazon-watcher-stack/values.yaml
-# Change: backend.image.tag: "apt-backend-0.2"
-
-# Commit and push
-git add charts/amazon-watcher-stack/values.yaml
-git commit -m "Update backend image to apt-backend-0.2"
-git push
-
-# ArgoCD will auto-sync (if enabled)
-# Or manually sync
-argocd app sync <app-name>
-```
-
-**Method 2: Helm upgrade:**
-```bash
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set backend.image.tag=apt-backend-0.2 \
-  --set backend.image.pullPolicy=Always
-```
-
-**Method 3: ArgoCD parameter (temporary):**
-```bash
-argocd app set <app-name> --helm-set backend.image.tag=apt-backend-0.2
-argocd app sync <app-name>
-```
-
-#### Verify Image Update
-
-```bash
-# Check current image
-kubectl get rollout <release-name>-backend -n <namespace> \
-  -o jsonpath='{.spec.template.spec.containers[0].image}'
-
-# Check all pod images
-kubectl get pods -n <namespace> -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
-
-# Force image pull (if using same tag)
-kubectl rollout restart rollout <release-name>-backend -n <namespace>
-```
-
-#### Automated Image Updates (ArgoCD Image Updater)
-
-**Setup ArgoCD Image Updater:**
-```yaml
-# In ArgoCD Application manifest
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: <app-name>
-  annotations:
-    argocd-image-updater.argoproj.io/image-list: backend=maborak/platform
-    argocd-image-updater.argoproj.io/backend.update-strategy: semver
-    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^apt-backend-.*$
-spec:
-  # ... rest of application spec
-```
-
----
-
-### Emergency Procedures
-
-#### Pod Restart
-
-```bash
-# Restart all pods in a Rollout
-kubectl rollout restart rollout <release-name>-backend -n <namespace>
-
-# Restart specific pod
-kubectl delete pod <pod-name> -n <namespace>
-
-# Force delete pod (if stuck)
-kubectl delete pod <pod-name> -n <namespace> --force --grace-period=0
-```
-
-#### Service Recovery
-
-**If Backend is Down:**
-```bash
-# 1. Check pod status
-kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend
-
-# 2. Check logs
-kubectl logs -n <namespace> -l app.kubernetes.io/component=backend --tail=100
-
-# 3. Check events
-kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep backend
-
-# 4. Restart if needed
-kubectl rollout restart rollout <release-name>-backend -n <namespace>
-
-# 5. Scale up if needed
-kubectl scale rollout <release-name>-backend -n <namespace> --replicas=3
-```
-
-**If Database is Down:**
-```bash
-# 1. Check StatefulSet
-kubectl get statefulset <release-name>-database -n <namespace>
-
-# 2. Check database pod
-kubectl describe pod <release-name>-database-0 -n <namespace>
-
-# 3. Check PVC
-kubectl get pvc -n <namespace>
-
-# 4. Check database logs
-kubectl logs <release-name>-database-0 -n <namespace> --tail=100
-```
-
-#### Rollback Emergency
-
-**Quick Rollback:**
-```bash
-# Rollback to previous revision
-kubectl argo rollouts undo <release-name>-screenshot -n <namespace>
-
-# Or via Helm
-helm rollback <release-name> <revision-number> -n <namespace>
-
-# Or via ArgoCD
-argocd app rollback <app-name> <revision-id>
-```
-
-**Complete Application Rollback:**
-```bash
-# 1. Get application history
-argocd app history <app-name>
-
-# 2. Rollback to previous sync
-argocd app rollback <app-name> <revision-id>
-
-# 3. Verify rollback
-kubectl get pods -n <namespace>
-```
-
-#### Disable Auto-Sync (Emergency)
-
-```bash
-# Disable auto-sync to prevent further changes
-argocd app set <app-name> --sync-policy none
-
-# Re-enable after fixing issue
-argocd app set <app-name> --sync-policy automated
-```
-
----
-
-### Database Operations
-
-#### Database Connection
-
-```bash
-# Port-forward to database
-kubectl port-forward svc/<release-name>-database -n <namespace> 5432:5432
-
-# Connect using psql
-psql -h localhost -U postgres -d <database-name>
-
-# Or exec into database pod
-kubectl exec -it <release-name>-database-0 -n <namespace> -- psql -U postgres
-```
-
-#### Database Backup
-
-```bash
-# Create backup
-kubectl exec <release-name>-database-0 -n <namespace> -- \
-  pg_dump -U postgres <database-name> > backup-$(date +%Y%m%d).sql
-
-# Or using PVC snapshot (if supported)
-kubectl get pvc <release-name>-database-pvc -n <namespace> -o yaml > pvc-backup.yaml
-```
-
-#### Database Restore
-
-```bash
-# Restore from backup
-kubectl exec -i <release-name>-database-0 -n <namespace> -- \
-  psql -U postgres <database-name> < backup-20260120.sql
-```
-
-#### Database Migration
-
-```bash
-# Run migration using CLI helper
-./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
-
-# Or using Alembic
-./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
-```
-
----
-
-### CLI Operations
-
-#### Run CLI Commands
-
-**Using Helper Script:**
-```bash
-# Run command in CLI Rollout pod
-./kubernetes/run-backend-cli-helm.sh "python cli.py monitor run --batch-limit=500"
-
-# With custom namespace/release
-NAMESPACE=automated RELEASE_NAME=test-apt \
-  ./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
-```
-
-**Direct kubectl exec:**
-```bash
-# Get CLI pod
-CLI_POD=$(kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend-cli -o jsonpath='{.items[0].metadata.name}')
-
-# Execute command
-kubectl exec -n <namespace> $CLI_POD -c backend-cli -- \
-  /bin/sh -c "cd /app && python cli.py monitor run"
-```
-
-#### Check CLI Status
-
-```bash
-# Check CLI pods
-kubectl get pods -n <namespace> -l app.kubernetes.io/component=backend-cli
-
-# Check CLI logs
-kubectl logs -n <namespace> -l app.kubernetes.io/component=backend-cli --tail=100
-
-# Check CLI Rollout
-kubectl get rollout <release-name>-backend-cli -n <namespace>
-```
-
----
-
-### Troubleshooting Procedures
-
-#### Pod Not Starting
-
-**Diagnosis:**
-```bash
-# Check pod status
-kubectl get pod <pod-name> -n <namespace> -o yaml
-
-# Check pod events
-kubectl describe pod <pod-name> -n <namespace>
-
-# Check logs
-kubectl logs <pod-name> -n <namespace> --previous  # If pod crashed
-
-# Check init containers
-kubectl logs <pod-name> -n <namespace> -c <init-container-name>
-```
-
-**Common Issues:**
-- **ImagePullBackOff**: Check image name/tag, image pull secrets
-- **CrashLoopBackOff**: Check application logs, health checks
-- **Pending**: Check resource quotas, node capacity, PVC binding
-
-#### HPA Not Scaling
-
-**Diagnosis:**
-```bash
-# Check HPA status
-kubectl describe hpa <hpa-name> -n <namespace>
-
-# Check Metrics Server
-kubectl get deployment metrics-server -n kube-system
-kubectl logs -n kube-system -l k8s-app=metrics-server
-
-# Check resource requests
-kubectl get rollout <rollout-name> -n <namespace> -o jsonpath='{.spec.template.spec.containers[0].resources}'
-
-# Check current metrics
-kubectl top pods -n <namespace>
-```
-
-**Solutions:**
-- Ensure Metrics Server is running
-- Verify resource requests are set in pod spec
-- Check HPA min/max replicas are correct
-- Verify target utilization percentage
-
-#### Ingress Not Working
-
-**Diagnosis:**
-```bash
-# Check Ingress resource
-kubectl get ingress -n <namespace>
-kubectl describe ingress <ingress-name> -n <namespace>
-
-# Check Ingress Controller
-kubectl get pods -n ingress-nginx
-kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller
-
-# Check service endpoints
-kubectl get endpoints -n <namespace>
-```
-
-**Solutions:**
-- Verify `ingress.className` matches Ingress Controller
-- Check service selector matches pod labels
-- Verify Ingress Controller is running
-- Check LoadBalancer IP assignment (MetalLB)
-
-#### ArgoCD Out of Sync
-
-**Diagnosis:**
-```bash
-# Check application status
-argocd app get <app-name>
-
-# Check diff
-argocd app diff <app-name>
-
-# Check ignored differences
-kubectl get application <app-name> -n argocd -o jsonpath='{.spec.ignoreDifferences}'
-```
-
-**Solutions:**
-- Verify `ignoreDifferences` is configured for HPA-managed Rollouts
-- Check if manual changes were made (will be overridden)
-- Force refresh: `argocd app get <app-name> --refresh`
-- Manual sync: `argocd app sync <app-name>`
-
----
-
-### Performance Tuning
-
-#### Resource Optimization
-
-**Check Current Resource Usage:**
-```bash
-# Check pod resource usage
-kubectl top pods -n <namespace>
-
-# Check node capacity
-kubectl describe nodes
-
-# Check resource requests vs limits
-kubectl get rollout <rollout-name> -n <namespace> \
-  -o jsonpath='{.spec.template.spec.containers[0].resources}'
-```
-
-**Update Resources:**
-```bash
-# Update via Helm
-helm upgrade <release-name> ./charts/amazon-watcher-stack \
-  --namespace <namespace> \
-  --set backend.resources.requests.cpu=1000m \
-  --set backend.resources.requests.memory=2Gi \
-  --set backend.resources.limits.cpu=2000m \
-  --set backend.resources.limits.memory=4Gi
-```
-
-#### HPA Tuning
-
-**Adjust Scaling Behavior:**
-```yaml
-autoscaling:
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
-      policies:
-      - type: Percent
-        value: 50  # Scale down max 50% at a time
-        periodSeconds: 60
-    scaleUp:
-      stabilizationWindowSeconds: 0  # Scale up immediately
-      policies:
-      - type: Percent
-        value: 100  # Can double replicas
-        periodSeconds: 60
-      - type: Pods
-        value: 4  # Or add 4 pods max
-        periodSeconds: 60
-```
-
-#### Database Tuning
-
-**PostgreSQL Configuration:**
-```bash
-# Check current database config
-kubectl exec <release-name>-database-0 -n <namespace> -- \
-  psql -U postgres -c "SHOW ALL;"
-
-# Update shared_buffers, max_connections, etc. via ConfigMap
-kubectl edit configmap <release-name>-database-config -n <namespace>
-```
-
----
-
-### Quick Reference Commands
-
-```bash
-# Application Status
-kubectl get all -n <namespace> -l app.kubernetes.io/instance=<release-name>
-
-# All Resources
-kubectl get rollout,hpa,svc,ingress,pvc -n <namespace>
-
-# Watch Resources
-watch -n 2 'kubectl get pods,rollout,hpa -n <namespace>'
-
-# Logs (all components)
-kubectl logs -n <namespace> -l app.kubernetes.io/instance=<release-name> --tail=50
-
-# Events (sorted by time)
-kubectl get events -n <namespace> --sort-by='.lastTimestamp' | tail -20
-
-# Resource Usage
-kubectl top pods -n <namespace> --sort-by=memory
-kubectl top pods -n <namespace> --sort-by=cpu
-
-# ArgoCD Quick Commands
-argocd app list
-argocd app get <app-name>
-argocd app sync <app-name>
-argocd app rollback <app-name> <revision>
-```
-
----
-
-## Additional Resources
-
-- [Kubernetes Infrastructure Setup](kubernetes/README.md) - Infrastructure components (MetalLB, Ingress, Argo Rollouts)
-- [Argo CD Setup Guide](docs/ZABBIX_ARGOCD_SETUP.md) - Detailed Argo CD installation and configuration
-- [Changing Helm Values in Argo CD](docs/CHANGE_VALUES.md) - Guide for managing Helm values in Argo CD
-
----
-
-**Repository Maintained By**: Maborak Technologies Inc.  
-**Last Updated**: January 2026
+**Issue Reporting**:
+- Use GitHub Issues for bug reports and feature requests
+- Include Kubernetes version, chart version, and error logs
+- Provide minimal reproduction steps
+- Label issues appropriately (bug, enhancement, security)
+
+**Issue Triage**:
+- Critical security issues: Immediate response
+- Production blockers: Response within 24 hours
+- Feature requests: Evaluated in next planning cycle
+- Documentation issues: Addressed in next documentation update
+
+### Patch and Lifecycle Strategy
+
+**Patch Releases**:
+- Security patches: Released immediately
+- Critical bug fixes: Released within 7 days
+- Non-critical fixes: Released in next scheduled patch
+
+**Version Lifecycle**:
+- Active support: Latest major and previous major version
+- Security patches: All supported versions
+- Deprecation notice: 6 months before version removal
+- End of life: Documented migration path provided
+
+### Enterprise-Style Support Expectations
+
+**Support Tiers**:
+- **Community Support**: GitHub Issues, best-effort responses
+- **Enterprise Support**: SLA-based support with dedicated channels
+
+**Support Scope**:
+- Chart installation and configuration issues
+- Compatibility issues with Kubernetes versions
+- Security vulnerability reporting and patching
+- Documentation clarifications and improvements
+
+**Out of Scope**:
+- Application-level debugging (chart works, application fails)
+- Custom development and feature implementation
+- Infrastructure setup and cluster configuration
+- Third-party integration support
