@@ -57,6 +57,8 @@ spec:
                 name: $SECRET_NAME
                 labels:
                   app.kubernetes.io/managed-by: Helm
+                annotations:
+                  "argocd.argoproj.io/sync-options": Prune=false
               type: Opaque
               stringData:
                 jwt-secret: "$JWT_SECRET"
