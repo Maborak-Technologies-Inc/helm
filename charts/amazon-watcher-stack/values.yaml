@@ -65,6 +65,24 @@ backend:
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
     maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
+    # Autoscaling configuration for CLI Rollout
+    autoscaling:
+      enabled: false  # Set to true to enable HPA for CLI
+      minReplicas: 3  # Minimum number of CLI pods (HPA will scale down to this)
+      maxReplicas: 10  # Maximum number of CLI pods (HPA will scale up to this)
+      targetCPUUtilizationPercentage: 80  # Target CPU utilization percentage
+      # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization percentage
+      # behavior: {}  # Optional: Custom scaling behavior (scaleUp/scaleDown policies)
+    # Rollout configuration for CLI
+    rollout:
+      revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+      progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+      # strategy: {}  # Optional: canary or blueGreen strategy
+    # PodDisruptionBudget configuration for CLI
+    podDisruptionBudget:
+      enabled: false  # Set to true to enable PDB for CLI
+      minAvailable: 2  # Minimum number of pods that must be available during disruptions
+      # maxUnavailable: 1  # Alternative: Maximum number of pods that can be unavailable
   # CronJob configuration (for periodic tasks)
   cronjob:
     enabled: true  # Set to true to enable CronJob
