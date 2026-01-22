@@ -52,7 +52,22 @@ check_app() {
     fi
 
     echo -n "🔍 Checking $POD... "
-    JWT=$(kubectl exec -n $NAMESPACE $POD -- env | grep APT_BACKEND_JWT_SECRET | cut -d '=' -f2 | tr -d '\r')
+    # Explicitly specify container to avoid "Defaulted container" message
+    # Try backend first (for backend pods), then backend-cli (for CLI pods), then backend-cronjob
+    # Use printenv for more reliable extraction (directly gets the variable value)
+    JWT=""
+    # Try each container in order, stopping when we find a value
+    for CONTAINER in "backend" "backend-cli" "backend-cronjob" ""; do
+      if [ -z "$CONTAINER" ]; then
+        # Last attempt: no container specified (kubectl will default)
+        JWT=$(kubectl exec -n $NAMESPACE $POD -- sh -c 'printenv APT_BACKEND_JWT_SECRET' 2>/dev/null | tr -d '\r\n' || echo "")
+      else
+        JWT=$(kubectl exec -n $NAMESPACE $POD -c "$CONTAINER" -- sh -c 'printenv APT_BACKEND_JWT_SECRET' 2>/dev/null | tr -d '\r\n' || echo "")
+      fi
+      if [ -n "$JWT" ]; then
+        break
+      fi
+    done
 
     if [ -z "$JWT" ]; then
       echo "❌ NO JWT FOUND"

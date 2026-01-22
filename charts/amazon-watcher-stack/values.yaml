@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 
 nameOverride: "apt"
-fullnameOverride: ""
+fullnameOverride: "apt-stack"
 
 # Global configuration
 global:
@@ -634,7 +634,7 @@ secrets:
   # Database password (if not using database.postgres.password)
   databasePassword: ""
   # JWT secret for backend
-  jwtSecret: "pipi"
+  jwtSecret: ""
 
 # Service Account
 serviceAccount:
