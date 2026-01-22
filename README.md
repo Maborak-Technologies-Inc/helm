@@ -166,34 +166,17 @@ Per-chart documentation should cover:
 
 ### Helm, Kubernetes, and Argo CD Interaction
 
-```
-┌─────────────────┐
-│   Git Repository │
-│  (Source of Truth)│
-└────────┬─────────┘
-         │
-         │ Git Push
-         ▼
-┌─────────────────┐
-│   Argo CD Server │
-│  (GitOps Controller)│
-└────────┬─────────┘
-         │
-         │ Render Helm Charts
-         │ Apply to Cluster
-         ▼
-┌─────────────────┐
-│  Kubernetes API  │
-│     Server       │
-└────────┬─────────┘
-         │
-         │ Create/Update Resources
-         ▼
-┌─────────────────┐
-│  Kubernetes      │
-│    Cluster       │
-│  (Running State) │
-└─────────────────┘
+```mermaid
+graph TB
+    Git[Git Repository - Source of Truth]
+    ArgoCD[Argo CD Server - GitOps Controller]
+    K8sAPI[Kubernetes API Server]
+    Cluster[Kubernetes Cluster - Running State]
+    
+    Git -->|Git Push| ArgoCD
+    ArgoCD -->|Render Helm Charts| ArgoCD
+    ArgoCD -->|Apply to Cluster| K8sAPI
+    K8sAPI -->|Create/Update Resources| Cluster
 ```
 
 ### Deployment Lifecycle
@@ -230,35 +213,16 @@ Per-chart documentation should cover:
 
 ```mermaid
 graph TB
-    subgraph "External"
-        User[User Browser]
-        Internet[Internet]
-    end
-    
-    subgraph "Ingress Layer"
-        Ingress[NGINX Ingress Controller]
-    end
-    
-    subgraph "Application Namespace"
-        subgraph "Frontend"
-            UI[UI Service<br/>NGINX]
-        end
-        
-        subgraph "Backend Services"
-            Backend[Backend API<br/>FastAPI/Uvicorn]
-            CLI[CLI Rollout<br/>Background Jobs]
-            CronJob[CronJob<br/>Scheduled Tasks]
-        end
-        
-        subgraph "Supporting Services"
-            Screenshot[Screenshot Service<br/>Playwright/Chromium]
-            DB[(PostgreSQL<br/>Database)]
-        end
-    end
-    
-    subgraph "Storage"
-        PVC[PersistentVolumeClaim<br/>Shared Storage]
-    end
+    User[User Browser]
+    Internet[Internet]
+    Ingress[NGINX Ingress Controller]
+    UI[UI Service - NGINX]
+    Backend[Backend API - FastAPI]
+    CLI[CLI Rollout]
+    CronJob[CronJob]
+    Screenshot[Screenshot Service]
+    DB[(PostgreSQL Database)]
+    PVC[PersistentVolumeClaim]
     
     User -->|HTTPS| Internet
     Internet -->|HTTPS| Ingress
@@ -280,44 +244,23 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph "Ingress Namespace"
-        IC[Ingress Controller]
-    end
+    IC[Ingress Controller]
+    UI[UI Service]
+    BE[Backend API]
+    CLI[CLI Rollout]
+    CJ[CronJob]
+    SS[Screenshot Service]
+    DB[PostgreSQL]
     
-    subgraph "Application Namespace"
-        subgraph "UI Pods"
-            UI[UI Service]
-        end
-        
-        subgraph "Backend Pods"
-            BE[Backend API]
-            CLI[CLI Rollout]
-            CJ[CronJob]
-        end
-        
-        subgraph "Screenshot Pods"
-            SS[Screenshot Service]
-        end
-        
-        subgraph "Database Pods"
-            DB[PostgreSQL]
-        end
-    end
-    
-    IC -.->|Allow Ingress| UI
-    UI -.->|Allow Egress| BE
-    BE -.->|Allow Egress| SS
-    BE -.->|Allow Egress| DB
-    CLI -.->|Allow Egress| BE
-    CLI -.->|Allow Egress| SS
-    CLI -.->|Allow Egress| DB
-    CJ -.->|Allow Egress| BE
-    CJ -.->|Allow Egress| DB
-    
-    style UI fill:#e1f5ff
-    style BE fill:#fff4e1
-    style SS fill:#ffe1f5
-    style DB fill:#e1ffe1
+    IC -->|Allow Ingress| UI
+    UI -->|Allow Egress| BE
+    BE -->|Allow Egress| SS
+    BE -->|Allow Egress| DB
+    CLI -->|Allow Egress| BE
+    CLI -->|Allow Egress| SS
+    CLI -->|Allow Egress| DB
+    CJ -->|Allow Egress| BE
+    CJ -->|Allow Egress| DB
 ```
 
 ### Network Policy Rules
@@ -346,18 +289,10 @@ graph LR
 
 ```mermaid
 graph LR
-    subgraph "External"
-        User[User]
-    end
-    
-    subgraph "Ingress"
-        Ingress[Ingress Controller<br/>LoadBalancer IP]
-    end
-    
-    subgraph "Application"
-        UI[UI Service<br/>Port 80]
-        Backend[Backend Service<br/>Port 9000]
-    end
+    User[User]
+    Ingress[Ingress Controller]
+    UI[UI Service - Port 80]
+    Backend[Backend Service - Port 9000]
     
     User -->|https://ui.example.com| Ingress
     User -->|https://api.example.com| Ingress
