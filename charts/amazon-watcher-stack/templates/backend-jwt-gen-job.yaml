@@ -1,0 +1,52 @@
+{{- if not .Values.secrets.jwtSecret }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "0"
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+    spec:
+      serviceAccountName: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+      restartPolicy: OnFailure
+      containers:
+        - name: jwt-gen
+          image: bitnami/kubectl:latest
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              SECRET_NAME="{{ include "amazon-watcher-stack.fullname" . }}-backend-secret"
+              
+              if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+                echo "Secret $SECRET_NAME already exists"
+                exit 0
+              fi
+              
+              echo "Generating random JWT secret..."
+              # Generate a random 32-character string using date, random, and sha256
+              JWT_SECRET=$(date +%s%N | sha256sum | base64 | head -c 32)
+              
+              # Create secret manifest
+              cat <<EOF | kubectl create -f -
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: $SECRET_NAME
+                labels:
+                  app.kubernetes.io/managed-by: Helm
+              type: Opaque
+              stringData:
+                jwt-secret: "$JWT_SECRET"
+              EOF
+              
+              echo "Secret $SECRET_NAME created successfully"
+{{- end }}

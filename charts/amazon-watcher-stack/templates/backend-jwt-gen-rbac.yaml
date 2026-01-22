@@ -1,0 +1,49 @@
+{{- if not .Values.secrets.jwtSecret }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "amazon-watcher-stack.fullname" . }}-jwt-gen
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

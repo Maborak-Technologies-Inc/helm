@@ -48,6 +48,11 @@ database:
     timeoutSeconds: 5
     failureThreshold: 5
     initialDelaySeconds: 10
+  # Network Policy configuration
+  networkPolicy:
+    enabled: true  # Set to true to enable NetworkPolicy
+    # ingress: []  # Custom ingress rules (if not provided, defaults are used)
+    # egress: []  # Custom egress rules (if not provided, defaults are used)
 
 # Backend Service Configuration
 backend:
@@ -115,6 +120,19 @@ backend:
     enabled: true
     path: /health
     port: 9000
+    # Readiness: Fast checks. If it fails, cut traffic immediately.
+    readinessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 2
+    # Liveness: Patient checks. Only restart if truly stuck.
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      timeoutSeconds: 10
+      failureThreshold: 5
+    # Legacy flat structure support (optional, can be removed if strict structure is preferred)
     initialDelaySeconds: 40
     periodSeconds: 30
     timeoutSeconds: 10
@@ -598,7 +616,7 @@ secrets:
   # Database password (if not using database.postgres.password)
   databasePassword: ""
   # JWT secret for backend
-  jwtSecret: "your-super-secret-jwt-key-here-change-this-in-production"
+  jwtSecret: ""
 
 # Service Account
 serviceAccount:

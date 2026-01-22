@@ -91,18 +91,32 @@ spec:
             httpGet:
               path: {{ .Values.backend.healthCheck.path }}
               port: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+            {{- if .Values.backend.healthCheck.livenessProbe }}
+            initialDelaySeconds: {{ .Values.backend.healthCheck.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.healthCheck.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.healthCheck.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.healthCheck.livenessProbe.failureThreshold }}
+            {{- else }}
             initialDelaySeconds: {{ .Values.backend.healthCheck.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.healthCheck.periodSeconds }}
             timeoutSeconds: {{ .Values.backend.healthCheck.timeoutSeconds }}
             failureThreshold: {{ .Values.backend.healthCheck.failureThreshold }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: {{ .Values.backend.healthCheck.path }}
               port: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
+            {{- if .Values.backend.healthCheck.readinessProbe }}
+            initialDelaySeconds: {{ .Values.backend.healthCheck.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.healthCheck.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.healthCheck.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.healthCheck.readinessProbe.failureThreshold }}
+            {{- else }}
             initialDelaySeconds: {{ .Values.backend.healthCheck.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.healthCheck.periodSeconds }}
             timeoutSeconds: {{ .Values.backend.healthCheck.timeoutSeconds }}
             failureThreshold: {{ .Values.backend.healthCheck.failureThreshold }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}

@@ -1,0 +1,48 @@
+{{- if and .Values.database.enabled .Values.database.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-db-networkpolicy
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic from Backend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.database.postgres.port }}
+    # Allow traffic from Backend CLI
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend-cli
+      ports:
+        - protocol: TCP
+          port: {{ .Values.database.postgres.port }}
+    # Allow traffic from Backend CronJob
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend-cronjob
+      ports:
+        - protocol: TCP
+          port: {{ .Values.database.postgres.port }}
+    # Custom ingress rules
+    {{- if .Values.database.networkPolicy.ingress }}
+    {{- toYaml .Values.database.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+{{- end }}
