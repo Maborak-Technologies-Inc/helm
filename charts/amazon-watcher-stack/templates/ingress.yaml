@@ -1,5 +1,7 @@
-{{- if and .Values.ingress.enabled .Values.ingress.className }}
-{{- if .Values.backend.enabled }}
+{{- /* Ingress is only created if: enabled=true, className is set, AND at least one domain is configured */}}
+{{- $hasDomain := or .Values.global.domain.ui .Values.global.domain.backend }}
+{{- if and .Values.ingress.enabled .Values.ingress.className $hasDomain }}
+{{- if and .Values.backend.enabled .Values.global.domain.backend }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -33,7 +35,7 @@ spec:
                 port:
                   number: {{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" | int }}
 {{- end }}
-{{- if .Values.ui.enabled }}
+{{- if and .Values.ui.enabled .Values.global.domain.ui }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

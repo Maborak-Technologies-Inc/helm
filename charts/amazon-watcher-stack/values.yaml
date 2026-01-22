@@ -8,8 +8,8 @@ fullnameOverride: ""
 global:
   context: amazon-watcher
   domain:
-    ui: ui.amazon-watcher.local
-    backend: api.amazon-watcher.local
+    ui: ""
+    backend: ""
   # Global HPA override (empty = use individual service settings, true/false = override all)
   hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
   # Global persistent storage (shared across backend, CLI jobs, and other services)
