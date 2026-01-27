@@ -158,7 +158,17 @@ spec:
       {{- end }}
   {{- if .Values.backend.rollout.strategy }}
   strategy:
+    {{- if .Values.backend.rollout.strategy.canary }}
+    canary:
+      stableService: {{ include "amazon-watcher-stack.backend.serviceName" . }}
+      canaryService: {{ include "amazon-watcher-stack.backend.canaryServiceName" . }}
+      {{- $canary := omit .Values.backend.rollout.strategy.canary "stableService" "canaryService" }}
+      {{- if $canary }}
+      {{- toYaml $canary | nindent 6 }}
+      {{- end }}
+    {{- else }}
     {{- toYaml .Values.backend.rollout.strategy | nindent 4 }}
+    {{- end }}
   {{- else }}
   # Default to simple canary strategy (equivalent to rolling update)
   strategy:

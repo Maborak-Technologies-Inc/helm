@@ -91,6 +91,13 @@ Service name for backend
 {{- end }}
 
 {{/*
+Service name for backend canary
+*/}}
+{{- define "amazon-watcher-stack.backend.canaryServiceName" -}}
+{{- printf "%s-backend-canary" (include "amazon-watcher-stack.fullname" .) }}
+{{- end }}
+
+{{/*
 Service name for UI
 */}}
 {{- define "amazon-watcher-stack.ui.serviceName" -}}
