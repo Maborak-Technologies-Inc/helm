@@ -337,7 +337,7 @@ backend:
         - setWeight: 50
         # Step 5: Pause for automated verification (10 minutes)
         - pause:
-            duration: 600  # 10 minutes (600 seconds)
+            duration: 60  # 1 minutes (60 seconds)
         # Step 6: Complete rollout (100% traffic)
         - setWeight: 100
         # Optional: Traffic routing (requires Istio/Linkerd service mesh)
