@@ -374,6 +374,21 @@ backend:
     #       value: 100
     #       periodSeconds: 15
 
+# Maborak Deployment Configuration
+# A utility deployment for running migrations and other administrative commands
+# Uses the same image and configuration as backend, but runs sleep infinity
+maborak:
+  enabled: false  # Set to true to enable Maborak deployment
+  replicas: 1  # Number of replicas (typically 1 for utility pod)
+  revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 500m
+
 # UI Service Configuration
 ui:
   enabled: true
