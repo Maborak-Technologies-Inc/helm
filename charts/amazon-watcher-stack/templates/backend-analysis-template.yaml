@@ -10,7 +10,7 @@ spec:
   metrics:
   - name: health-check
     interval: 30s  # Check every 30 seconds
-    successCondition: result[0].statusCode == 200
+    successCondition: result.statusCode == 200
     failureLimit: 3  # Fail after 3 consecutive failures
     count: 3  # Run 3 checks
     provider:
