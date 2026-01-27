@@ -17,7 +17,7 @@ spec:
       web:
         # Argo Rollouts creates a canary service automatically
         # Format: <rollout-name>-canary.<namespace>.svc.cluster.local
-        url: "http://{{ include \"amazon-watcher-stack.fullname\" . }}-backend-canary.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.env.APT_BACKEND_UVI_PORT | default \"9000\" }}{{ .Values.backend.healthCheck.path | default \"/health\" }}"
+        url: "http://{{ include "amazon-watcher-stack.fullname" . }}-backend-canary.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.env.APT_BACKEND_UVI_PORT | default "9000" }}{{ .Values.backend.healthCheck.path | default "/health" }}"
         headers:
         - key: Content-Type
           value: application/json
