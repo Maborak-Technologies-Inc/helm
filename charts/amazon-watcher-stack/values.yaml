@@ -378,7 +378,7 @@ backend:
 # A utility deployment for running migrations and other administrative commands
 # Uses the same image and configuration as backend, but runs sleep infinity
 maborak:
-  enabled: false  # Set to true to enable Maborak deployment
+  enabled: true  # Set to true to enable Maborak deployment
   replicas: 1  # Number of replicas (typically 1 for utility pod)
   revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
   resources:
