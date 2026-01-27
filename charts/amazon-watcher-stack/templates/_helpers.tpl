@@ -131,6 +131,13 @@ Backend image
 {{- end }}
 
 {{/*
+Backend image Dev
+*/}}
+{{- define "amazon-watcher-stack.backend.image-dev" -}}
+{{- printf "%s:%s-dev" .Values.backend.image.repository (.Values.backend.image.tag | default .Chart.AppVersion) }}
+{{- end }}
+
+{{/*
 UI image
 */}}
 {{- define "amazon-watcher-stack.ui.image" -}}

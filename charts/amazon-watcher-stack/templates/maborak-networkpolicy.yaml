@@ -21,7 +21,7 @@ spec:
   egress:
     {{- toYaml .Values.maborak.networkPolicy.egress | nindent 4 }}
   {{- else }}
-  # Default: Allow egress to database and screenshot service (same as backend)
+  # Default: Allow egress only to internal cluster resources (no internet access)
   egress:
     - to:
         - podSelector:
@@ -37,12 +37,18 @@ spec:
           port: 5432  # Database
         - protocol: TCP
           port: {{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}  # Screenshot
+    # Allow DNS only within the cluster (kube-dns in kube-system namespace)
     - to:
-        - namespaceSelector: {}  # Allow DNS and other cluster services
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
           port: 53  # DNS
         - protocol: TCP
-          port: 443  # HTTPS for external APIs
+          port: 53  # DNS over TCP
   {{- end }}
 {{- end }}

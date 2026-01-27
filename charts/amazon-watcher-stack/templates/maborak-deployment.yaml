@@ -41,7 +41,7 @@ spec:
       {{- end }}
       containers:
         - name: maborak
-          image: {{ include "amazon-watcher-stack.backend.image" . }}
+          image: {{ include "amazon-watcher-stack.backend.image-dev" . }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           workingDir: /app
           command: ["/bin/sh", "-c"]
