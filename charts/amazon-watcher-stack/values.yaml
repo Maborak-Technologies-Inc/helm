@@ -327,9 +327,9 @@ backend:
         # Step 2: Verify canary pod is healthy before proceeding
         # Checks the health endpoint 3 times with 30s intervals
         # Fails if any check returns non-200 status code
-        #- analysis:
-        #    templates:
-        #    - templateName: backend-health-check
+        - analysis:
+            templates:
+            - templateName: backend-health-check
         # Step 3: Pause for manual verification (duration: 0 = manual pause)
         - pause:
             duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
