@@ -388,6 +388,10 @@ maborak:
     requests:
       memory: 512Mi
       cpu: 500m
+  # Network Policy configuration
+  networkPolicy:
+    enabled: true  # Set to true to enable NetworkPolicy (required for database access if network policies are enforced)
+    # egress: []  # Custom egress rules (if not provided, defaults allow database and screenshot access)
 
 # UI Service Configuration
 ui:
