@@ -1,0 +1,24 @@
+{{- if and .Values.backend.enabled .Values.backend.rollout.strategy.canary }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: backend-health-check
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+spec:
+  metrics:
+  - name: health-check
+    interval: 30s  # Check every 30 seconds
+    successCondition: result[0].statusCode == 200
+    failureLimit: 3  # Fail after 3 consecutive failures
+    count: 3  # Run 3 checks
+    provider:
+      web:
+        # Argo Rollouts creates a canary service automatically
+        # Format: <rollout-name>-canary.<namespace>.svc.cluster.local
+        url: "http://{{ include \"amazon-watcher-stack.fullname\" . }}-backend-canary.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.env.APT_BACKEND_UVI_PORT | default \"9000\" }}{{ .Values.backend.healthCheck.path | default \"/health\" }}"
+        headers:
+        - key: Content-Type
+          value: application/json
+{{- end }}

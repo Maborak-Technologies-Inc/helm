@@ -1,0 +1,48 @@
+{{- if and .Values.maborak.enabled .Values.maborak.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "amazon-watcher-stack.fullname" . }}-maborak
+  labels:
+    {{- include "amazon-watcher-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: maborak
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "amazon-watcher-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: maborak
+  policyTypes:
+    - Egress
+  {{- if .Values.maborak.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.maborak.networkPolicy.egress | nindent 4 }}
+  {{- else }}
+  # Default: Allow egress to database and screenshot service (same as backend)
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: database
+        - podSelector:
+            matchLabels:
+              {{- include "amazon-watcher-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: screenshot
+      ports:
+        - protocol: TCP
+          port: 5432  # Database
+        - protocol: TCP
+          port: {{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}  # Screenshot
+    - to:
+        namespaceSelector: {}  # Allow DNS and other cluster services
+      ports:
+        - protocol: UDP
+          port: 53  # DNS
+        - protocol: TCP
+          port: 443  # HTTPS for external APIs
+  {{- end }}
+{{- end }}

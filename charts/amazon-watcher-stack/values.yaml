@@ -8,8 +8,8 @@ fullnameOverride: ""
 global:
   context: amazon-watcher
   domain:
-    ui: ""
-    backend: ""
+    ui: ""  # UI domain (e.g., "ui.amazon-watcher.local" or "dev-ui.example.com") - Required for ingress
+    backend: ""  # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
   # Global HPA override (empty = use individual service settings, true/false = override all)
   hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
   # Global persistent storage (shared across backend, CLI jobs, and other services)
@@ -324,20 +324,22 @@ backend:
         steps:
         # Step 1: Set initial traffic weight (1%)
         - setWeight: 1
-        # Step 2: Pause for manual verification (duration: 0 = manual pause)
+        # Step 2: Verify canary pod is healthy before proceeding
+        # Checks the health endpoint 3 times with 30s intervals
+        # Fails if any check returns non-200 status code
+        - analysis:
+            templates:
+            - templateName: backend-health-check
+        # Step 3: Pause for manual verification (duration: 0 = manual pause)
         - pause:
             duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
-        # Step 3: Set traffic weight to 50%
+        # Step 4: Set traffic weight to 50%
         - setWeight: 50
-        # Step 4: Pause for automated verification (2 minutes)
+        # Step 5: Pause for automated verification (10 minutes)
         - pause:
-            duration: 120  # 2 minutes (120 seconds)
-        # Step 5: Complete rollout (100% traffic)
+            duration: 600  # 10 minutes (600 seconds)
+        # Step 6: Complete rollout (100% traffic)
         - setWeight: 100
-        # Optional: Analysis templates for automated verification
-        # analysis:
-        #   templates:
-        #   - templateName: backend-analysis
         # Optional: Traffic routing (requires Istio/Linkerd service mesh)
         # trafficRouting:
         #   istio:
