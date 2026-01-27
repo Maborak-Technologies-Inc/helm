@@ -38,7 +38,7 @@ spec:
         - protocol: TCP
           port: {{ .Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int }}  # Screenshot
     - to:
-        namespaceSelector: {}  # Allow DNS and other cluster services
+        - namespaceSelector: {}  # Allow DNS and other cluster services
       ports:
         - protocol: UDP
           port: 53  # DNS
