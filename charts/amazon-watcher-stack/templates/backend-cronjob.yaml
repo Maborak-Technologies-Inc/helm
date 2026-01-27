@@ -117,6 +117,15 @@ spec:
               # Computed SCREENSHOT_SERVICE_URL (use from env if set, otherwise auto-generate)
               - name: APT_BACKEND_SCREENSHOT_SERVICE_URL
                 value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
+              # Computed DOMAIN_UI (use from env if set, otherwise auto-generate from global.domain.ui)
+              - name: DOMAIN_UI
+                {{- if .Values.backend.env.DOMAIN_UI }}
+                value: {{ .Values.backend.env.DOMAIN_UI | quote }}
+                {{- else if .Values.global.domain.ui }}
+                value: {{ printf "http://%s" .Values.global.domain.ui | quote }}
+                {{- else }}
+                value: ""
+                {{- end }}
               # Iterate over all env vars from values.yaml - same as backend rollout
               {{- include "amazon-watcher-stack.backend.env" . | nindent 14 }}
             resources:

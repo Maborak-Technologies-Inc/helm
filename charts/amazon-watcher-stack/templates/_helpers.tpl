@@ -153,11 +153,11 @@ Database image
 
 {{/*
 Backend environment variables - iterate over env map (prefixes already included)
-Skips empty values and special computed vars (APT_BACKEND_DATABASE_URL, APT_BACKEND_SCREENSHOT_SERVICE_URL)
+Skips empty values and special computed vars (APT_BACKEND_DATABASE_URL, APT_BACKEND_SCREENSHOT_SERVICE_URL, DOMAIN_UI)
 */}}
 {{- define "amazon-watcher-stack.backend.env" -}}
 {{- range $key, $value := .Values.backend.env }}
-{{- if and $value (ne $key "APT_BACKEND_DATABASE_URL") (ne $key "APT_BACKEND_SCREENSHOT_SERVICE_URL") }}
+{{- if and $value (ne $key "APT_BACKEND_DATABASE_URL") (ne $key "APT_BACKEND_SCREENSHOT_SERVICE_URL") (ne $key "DOMAIN_UI") }}
 - name: {{ $key }}
   value: {{ $value | quote }}
 {{- end }}

@@ -60,7 +60,7 @@ backend:
   replicas: 3
   # CLI Rollout configuration (for continuous monitoring/processing)
   cli:
-    enabled: true  # Set to true to enable CLI Rollout
+    enabled: false  # Set to true to enable CLI Rollout
     replicas: 1  # Number of replicas (used when HPA is disabled)
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
     waitForBackend: true  # Wait for backend service to be ready before starting
@@ -122,7 +122,7 @@ backend:
       maxUnavailable: 1  # Maximum number of pods that can be unavailable
   image:
     repository: maborak/platform
-    tag: "apt-backend-0.1"
+    tag: "apt-backend-0.2"
     pullPolicy: Always
   resources:
     limits:
@@ -182,9 +182,17 @@ backend:
     APT_BACKEND_UVI_LIMIT_MAX_REQUESTS: "1000"
     APT_BACKEND_UVI_TIMEOUT_KEEP_ALIVE: "30"
     APT_BACKEND_UVI_TIMEOUT_GRACEFUL_SHUTDOWN: "30"
+    APT_BACKEND_JWT_SECRET: "your-super-secret-jwt-key-here-change-this-in-production"  # JWT secret key for token signing (use secrets.jwtSecret if set)
     APT_BACKEND_JWT_ALGORITHM: "HS256"
     APT_BACKEND_JWT_ACCESS_TOKEN_EXPIRY: "3600"
     APT_BACKEND_JWT_REFRESH_TOKEN_EXPIRY: "2592000"
+    # CAPTCHA Configuration
+    APT_BACKEND_CAPTCHA_TYPE: "turnstile"  # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
+    APT_BACKEND_RECAPTCHA_V3_SECRET_KEY: "6Lejc1csAAAAAI-_ifGaGOLIK8jyk3Mv78-i3wtp"  # Google reCAPTCHA v3 secret key
+    APT_BACKEND_TURNSTILE_SECRET_KEY: "0x4AAAAAACSywaSu-nfefLxLT2pQJxV5vf0"  # Cloudflare Turnstile secret key
+    APT_BACKEND_RECAPTCHA_V3_THRESHOLD: "0.5"  # reCAPTCHA v3 score threshold (0.0 to 1.0)
+    # Domain Configuration
+    DOMAIN_UI: ""  # UI domain for email links (verification, password reset, etc.) - Auto-generated from global.domain.ui if empty
     APT_BACKEND_CORS_ORIGINS: "*"
     APT_BACKEND_CORS_ALLOW_CREDENTIALS: "true"
     APT_BACKEND_CORS_ALLOW_METHODS: "*"
@@ -256,8 +264,36 @@ backend:
     APT_BACKEND_SCREENSHOT_SERVICE_JAVASCRIPT_ENABLED: "false"
     APT_BACKEND_SCREENSHOT_SERVICE_STOP_ON_CAPTCHA: "false"
     APT_BACKEND_SCREENSHOT_SERVICE_BROWSER_TYPE: "chromium"
-    APT_BACKEND_BENCH_KEY: ""
+    APT_BACKEND_BENCH_KEY: "sdhdfkjhsdhfkshdfjhsd"
     APT_BACKEND_TEST_MODE: "false"
+    # Cookie lifetime threshold (for --orphans flag)
+    APT_BACKEND_COOKIE_LIFETIME: "3600"
+    # Hook Handlers Configuration
+    APT_BACKEND_HOOKS_USE_DB_CONFIG: "false"  # Use database config for hook handlers
+    APT_BACKEND_HOOK_LOG_ENABLED: "true"  # Enable log handler
+    # Email Handler Configuration
+    APT_BACKEND_HOOK_EMAIL_ENABLED: "true"  # Enable email handler
+    APT_BACKEND_HOOK_EMAIL_SENDER: "wilmer@maborak.com"  # Email sender address
+    APT_BACKEND_HOOK_EMAIL_SENDER_NAME: "Amazon Watcher"  # Email sender name
+    APT_BACKEND_HOOK_EMAIL_RECEIVER: "maborak@gmail.com"  # Default email receiver
+    APT_BACKEND_HOOK_EMAIL_USERNAME: "sender"  # SMTP username
+    APT_BACKEND_HOOK_EMAIL_PASSWORD: "nulled-by-wilmer-taiquuj0ieng6Sa9Veejoh"  # SMTP password
+    APT_BACKEND_HOOK_EMAIL_SMTP_HOST: "142.44.188.182"  # SMTP host
+    APT_BACKEND_HOOK_EMAIL_SMTP_PORT: "2525"  # SMTP port
+    APT_BACKEND_HOOK_EMAIL_SMTP_SECURITY: "plain"  # SMTP security: "ssl", "starttls", or "plain"
+    APT_BACKEND_HOOK_EMAIL_SMTP_VERIFY_SSL: "false"  # Verify SSL certificate
+    APT_BACKEND_HOOK_EMAIL_CONTENT_ENCODING: "quoted-printable"  # Content encoding: "quoted-printable", "base64", or "7bit"
+    APT_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "infra-aws"  # Email template set name (e.g., "default", "minimal", "corporate")
+    APT_BACKEND_HOOK_EMAIL_TEMPLATES_DIR: ""  # Custom templates directory path (empty for default)
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_NEW: "true"  # Notify on new products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_CHANGED: "true"  # Notify on changed products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_UPDATED: "false"  # Notify on updated products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_NOT_CHANGED: "false"  # Notify on unchanged products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_SAVED: "false"  # Notify on saved products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_VERIFICATION: "true"  # Send verification emails
+    APT_BACKEND_HOOK_EMAIL_VERIFICATION_PATH: "/account/verify"  # Verification link path (appended to DOMAIN_UI)
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_PASSWORD_RESET: "true"  # Send password reset emails
+    APT_BACKEND_HOOK_EMAIL_PASSWORD_RESET_PATH: "/account/reset-password"  # Password reset link path (appended to DOMAIN_UI)
   # Screenshot storage volume (deprecated - use global.storage instead)
   # This section is kept for backward compatibility but is ignored if global.storage.enabled is true
   screenshotStorage:
@@ -345,7 +381,7 @@ ui:
   replicas: 1
   image:
     repository: maborak/platform
-    tag: "apt-ui-0.1"
+    tag: "apt-ui-0.2"
     pullPolicy: Always
   resources:
     limits:
@@ -378,6 +414,10 @@ ui:
     VITE_PRICE_HISTORY_PAGE_SIZE: "10"
     VITE_DEBUG_MODE: "true"
     VITE_LOG_LEVEL: "info"
+    # CAPTCHA Configuration
+    VITE_CAPTCHA_PROVIDER: "turnstile"  # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
+    VITE_RECAPTCHA_SITE_KEY: "6Lejc1csAAAAAMcSkjVoAD4xGm1Nm6aIwhy1AUrL"  # Google reCAPTCHA v3 site key (public key)
+    VITE_TURNSTILE_SITE_KEY: "0x4AAAAAACSywe2vgnS_c_an"  # Cloudflare Turnstile site key (public key)
   # Pod Disruption Budget configuration
   podDisruptionBudget:
     enabled: false  # Set to true to enable PDB
@@ -461,7 +501,7 @@ screenshot:
   replicas: 1
   image:
     repository: maborak/platform
-    tag: "apt-browser-0.1"
+    tag: "apt-browser-0.2"
     pullPolicy: Always
   resources:
     limits:
