@@ -182,7 +182,6 @@ backend:
     APT_BACKEND_UVI_LIMIT_MAX_REQUESTS: "1000"
     APT_BACKEND_UVI_TIMEOUT_KEEP_ALIVE: "30"
     APT_BACKEND_UVI_TIMEOUT_GRACEFUL_SHUTDOWN: "30"
-    APT_BACKEND_JWT_SECRET: "your-super-secret-jwt-key-here-change-this-in-production"  # JWT secret key for token signing (use secrets.jwtSecret if set)
     APT_BACKEND_JWT_ALGORITHM: "HS256"
     APT_BACKEND_JWT_ACCESS_TOKEN_EXPIRY: "3600"
     APT_BACKEND_JWT_REFRESH_TOKEN_EXPIRY: "2592000"
