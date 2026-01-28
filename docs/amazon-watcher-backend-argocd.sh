@@ -66,31 +66,25 @@ check_prerequisites() {
 }
 
 setup_argocd_access() {
-    print_info "Setting up ArgoCD access..."
+    print_info "Checking ArgoCD access..."
     
-    # Check if port-forward is needed
-    if ! curl -s -k https://localhost:${ARGOCD_PORT} &> /dev/null; then
-        print_info "Starting ArgoCD port-forward on port ${ARGOCD_PORT}..."
-        kubectl port-forward svc/argocd-server -n argocd ${ARGOCD_PORT}:443 > /tmp/argocd-portforward.log 2>&1 &
-        sleep 3
-    fi
-    
-    # Get admin password
-    ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d 2>/dev/null || echo "")
-    
-    if [ -z "$ARGOCD_PASSWORD" ]; then
-        print_error "Could not retrieve ArgoCD admin password. Please login manually."
+    # Check if logged into ArgoCD
+    if argocd account get-user-info &> /dev/null; then
+        print_info "Successfully logged into ArgoCD"
+        return 0
+    else
+        print_error "Not logged into ArgoCD"
+        print_info "Please login to ArgoCD manually and try again."
+        print_info "Example: argocd login <ARGOCD_SERVER> --username admin --password <PASSWORD>"
+        
+        # Try to provide helpful info about admin password
+        ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d 2>/dev/null || echo "")
+        if [ -n "$ARGOCD_PASSWORD" ]; then
+            print_info "ArgoCD admin password: ${ARGOCD_PASSWORD}"
+        fi
+        
         exit 1
     fi
-    
-    # Login to ArgoCD
-    print_info "Logging into ArgoCD..."
-    argocd login localhost:${ARGOCD_PORT} --insecure --username admin --password "${ARGOCD_PASSWORD}" || {
-        print_error "Failed to login to ArgoCD"
-        exit 1
-    }
-    
-    print_info "Successfully logged into ArgoCD"
 }
 
 wait_for_sync_completion() {
@@ -458,10 +452,10 @@ uninstall_amazon_watcher_backend() {
         print_info "Application '${APP_NAME}' does not exist"
     fi
     
-    # Step 2: Stop port-forward
-    print_info "Stopping port-forward..."
-    HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
-    pkill -f "port-forward.*${HELM_RELEASE}" 2>/dev/null || true
+    # Step 2: Stop port-forward (Removed as requested)
+    # print_info "Stopping port-forward..."
+    # HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
+    # pkill -f "port-forward.*${HELM_RELEASE}" 2>/dev/null || true
     
     # Step 3: Delete namespace (this will delete all resources)
     print_info "Deleting namespace '${NAMESPACE}'..."

@@ -286,7 +286,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
 kubectl wait --namespace kube-system --for=condition=ready pod --selector=k8s-app=metrics-server --timeout=90s
 ```
 
-### Docker Desktop TLS Fix
+### Docker Desktop TLS Fix if Metrics Server is not working
 
 **Important**: On Docker Desktop Kubernetes, Metrics Server requires a TLS configuration fix due to certificate validation issues with kubelet connections.
 

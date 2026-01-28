@@ -6,8 +6,7 @@ metadata:
 spec:
   addresses:
   # Using specific IPs accessible from host (CIDR format)
-  - 192.168.0.40/32
-  - 192.168.0.41/32
+  - 192.168.0.200/32
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
