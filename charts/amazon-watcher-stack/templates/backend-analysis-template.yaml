@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: backend-health-check
+  name: {{ include "amazon-watcher-stack.backend.analysisTemplateName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "amazon-watcher-stack.labels" . | nindent 4 }}

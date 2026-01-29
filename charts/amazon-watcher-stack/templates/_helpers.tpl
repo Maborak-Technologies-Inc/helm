@@ -219,3 +219,10 @@ Generate checksum of environment variables to force pod restart on config change
 {{- define "amazon-watcher-stack.screenshot.envChecksum" -}}
 {{- .Values.screenshot.env | toJson | sha256sum | trunc 8 }}
 {{- end }}
+
+{{/*
+AnalysisTemplate name for backend
+*/}}
+{{- define "amazon-watcher-stack.backend.analysisTemplateName" -}}
+{{- printf "%s-backend-health-check" (include "amazon-watcher-stack.fullname" .) }}
+{{- end }}

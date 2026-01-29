@@ -164,7 +164,7 @@ spec:
       canaryService: {{ include "amazon-watcher-stack.backend.canaryServiceName" . }}
       {{- $canary := omit .Values.backend.rollout.strategy.canary "stableService" "canaryService" }}
       {{- if $canary }}
-      {{- toYaml $canary | nindent 6 }}
+      {{- toYaml $canary | replace "templateName: backend-health-check" (printf "templateName: %s" (include "amazon-watcher-stack.backend.analysisTemplateName" .)) | nindent 6 }}
       {{- end }}
     {{- else }}
     {{- toYaml .Values.backend.rollout.strategy | nindent 4 }}
