@@ -16,7 +16,7 @@ metadata:
   {{- end }}
 spec:
   replicas: {{ .Values.maborak.replicas | default 1 }}
-  revisionHistoryLimit: {{ .Values.maborak.revisionHistoryLimit | default 10 }}
+  revisionHistoryLimit: {{ .Values.maborak.revisionHistoryLimit | default .Values.global.revisionHistoryLimit | default 10 }}
   selector:
     matchLabels:
       {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}

@@ -12,7 +12,7 @@ metadata:
   {{- end }}
 spec:
   {{- $hpaEnabled := .Values.screenshot.autoscaling.enabled }}
-  {{- if and (hasKey .Values.global "hpa") (ne .Values.global.hpa nil) (ne .Values.global.hpa "") }}
+  {{- if ne (printf "%v" .Values.global.hpa) "" }}
     {{- $hpaEnabled = .Values.global.hpa }}
   {{- end }}
   {{- if not $hpaEnabled }}
@@ -22,7 +22,7 @@ spec:
   # When HPA is enabled, set initial replicas to minReplicas (HPA will manage scaling)
   replicas: {{ .Values.screenshot.autoscaling.minReplicas }}
   {{- end }}
-  revisionHistoryLimit: {{ .Values.screenshot.rollout.revisionHistoryLimit | default 10 }}
+  revisionHistoryLimit: {{ .Values.screenshot.rollout.revisionHistoryLimit | default .Values.global.revisionHistoryLimit | default 10 }}
   {{- if .Values.screenshot.rollout.progressDeadlineSeconds }}
   progressDeadlineSeconds: {{ .Values.screenshot.rollout.progressDeadlineSeconds }}
   {{- end }}

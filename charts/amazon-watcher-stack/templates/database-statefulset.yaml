@@ -13,6 +13,11 @@ metadata:
 spec:
   serviceName: {{ include "amazon-watcher-stack.db.serviceName" . }}
   replicas: 1
+  {{- if .Values.database.storage.pvcRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.database.storage.pvcRetentionPolicy.whenDeleted | default "Retain" }}
+    whenScaled: {{ .Values.database.storage.pvcRetentionPolicy.whenScaled | default "Retain" }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "amazon-watcher-stack.selectorLabels" . | nindent 6 }}
@@ -44,6 +49,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.database.postgres.dataPath }}
+              {{- if .Values.database.storage.subPath }}
+              subPath: {{ .Values.database.storage.subPath | quote }}
+              {{- end }}
       containers:
         - name: postgres
           image: {{ include "amazon-watcher-stack.db.image" . }}
@@ -91,6 +99,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.database.postgres.dataPath }}
+              {{- if .Values.database.storage.subPath }}
+              subPath: {{ .Values.database.storage.subPath | quote }}
+              {{- end }}
           # PostgreSQL runs as postgres user (UID 999)
           securityContext:
             runAsUser: 999

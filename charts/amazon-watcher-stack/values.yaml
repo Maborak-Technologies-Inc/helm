@@ -12,6 +12,8 @@ global:
     backend: ""  # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
   # Global HPA override (empty = use individual service settings, true/false = override all)
   hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
+  # Global rollout configuration
+  revisionHistoryLimit: 10  # Global default for number of old ReplicaSets to retain
   # Global persistent storage (shared across backend, CLI jobs, and other services)
   storage:
     enabled: true  # Enable global persistent storage
@@ -35,6 +37,12 @@ database:
     size: 10Gi
     accessModes:
       - ReadWriteOnce
+    # subPath: "db-data"  # Optional: mount a sub-directory of the volume
+    # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
+    # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
+    pvcRetentionPolicy:
+      whenDeleted: Retain  # Options: Retain (default), Delete
+      whenScaled: Retain   # Options: Retain (default), Delete
   resources:
     limits:
       memory: 1Gi
@@ -75,7 +83,7 @@ backend:
       # behavior: {}  # Optional: Custom scaling behavior (scaleUp/scaleDown policies)
     # Rollout configuration for CLI
     rollout:
-      revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+      revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
       progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
       # Strategy for sequential pod startup (one pod at a time)
       strategy:
@@ -309,7 +317,7 @@ backend:
     # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
     progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
@@ -382,7 +390,7 @@ backend:
 maborak:
   enabled: true  # Set to true to enable Maborak deployment
   replicas: 1  # Number of replicas (typically 1 for utility pod)
-  revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+  revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
   resources:
     limits:
       memory: 1Gi
@@ -450,7 +458,7 @@ ui:
     # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
     progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
@@ -543,7 +551,7 @@ screenshot:
     failureThreshold: 3
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: 10  # Number of old ReplicaSets to retain
+    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
     progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
