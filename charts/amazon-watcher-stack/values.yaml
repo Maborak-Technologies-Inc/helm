@@ -8,19 +8,19 @@ fullnameOverride: ""
 global:
   context: amazon-watcher
   domain:
-    ui: ""  # UI domain (e.g., "ui.amazon-watcher.local" or "dev-ui.example.com") - Required for ingress
-    backend: ""  # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
+    ui: "" # UI domain (e.g., "ui.amazon-watcher.local" or "dev-ui.example.com") - Required for ingress
+    backend: "" # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
   # Global HPA override (empty = use individual service settings, true/false = override all)
-  hpa: ""  # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
+  hpa: "" # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
   # Global rollout configuration
-  revisionHistoryLimit: 10  # Global default for number of old ReplicaSets to retain
+  revisionHistoryLimit: 10 # Global default for number of old ReplicaSets to retain
   # Global persistent storage (shared across backend, CLI jobs, and other services)
   storage:
-    enabled: true  # Enable global persistent storage
-    storageClassName: ""  # Storage class (empty = use default)
-    size: 10Gi  # Storage size
+    enabled: true # Enable global persistent storage
+    storageClassName: "" # Storage class (empty = use default)
+    size: 10Gi # Storage size
     accessModes:
-      - ReadWriteOnce  # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
+      - ReadWriteOnce # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
 
 # Database Configuration
 database:
@@ -41,8 +41,8 @@ database:
     # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
     # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
     pvcRetentionPolicy:
-      whenDeleted: Retain  # Options: Retain (default), Delete
-      whenScaled: Retain   # Options: Retain (default), Delete
+      whenDeleted: Retain # Options: Retain (default), Delete
+      whenScaled: Retain # Options: Retain (default), Delete
   resources:
     limits:
       memory: 1Gi
@@ -58,7 +58,7 @@ database:
     initialDelaySeconds: 10
   # Network Policy configuration
   networkPolicy:
-    enabled: true  # Set to true to enable NetworkPolicy
+    enabled: true # Set to true to enable NetworkPolicy
     # ingress: []  # Custom ingress rules (if not provided, defaults are used)
     # egress: []  # Custom egress rules (if not provided, defaults are used)
 
@@ -68,51 +68,51 @@ backend:
   replicas: 3
   # CLI Rollout configuration (for continuous monitoring/processing)
   cli:
-    enabled: false  # Set to true to enable CLI Rollout
-    replicas: 1  # Number of replicas (used when HPA is disabled)
-    command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short"  # Command to run continuously
-    waitForBackend: true  # Wait for backend service to be ready before starting
-    maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
+    enabled: false # Set to true to enable CLI Rollout
+    replicas: 1 # Number of replicas (used when HPA is disabled)
+    command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short" # Command to run continuously
+    waitForBackend: true # Wait for backend service to be ready before starting
+    maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
     # Autoscaling configuration for CLI Rollout
     autoscaling:
-      enabled: true  # Set to true to enable HPA for CLI
-      minReplicas: 1  # Minimum number of CLI pods (HPA will scale down to this)
-      maxReplicas: 10  # Maximum number of CLI pods (HPA will scale up to this)
-      targetCPUUtilizationPercentage: 80  # Target CPU utilization percentage
+      enabled: true # Set to true to enable HPA for CLI
+      minReplicas: 1 # Minimum number of CLI pods (HPA will scale down to this)
+      maxReplicas: 10 # Maximum number of CLI pods (HPA will scale up to this)
+      targetCPUUtilizationPercentage: 80 # Target CPU utilization percentage
       # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization percentage
       # behavior: {}  # Optional: Custom scaling behavior (scaleUp/scaleDown policies)
     # Rollout configuration for CLI
     rollout:
-      revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
-      progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+      revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null
+      progressDeadlineSeconds: 1800 # 30 minutes timeout for rollout progress
       # Strategy for sequential pod startup (one pod at a time)
       strategy:
         canary:
           # Sequential pod creation: only 1 new pod at a time
-          maxSurge: 1  # Maximum number of pods that can be created above desired replicas
-          maxUnavailable: 0  # No pods terminated until new one is ready
+          maxSurge: 1 # Maximum number of pods that can be created above desired replicas
+          maxUnavailable: 0 # No pods terminated until new one is ready
           steps:
             # Wait 30 seconds between each pod creation
             - pause:
-                duration: 30  # Wait 30 seconds before proceeding to next pod
+                duration: 30 # Wait 30 seconds before proceeding to next pod
     # PodDisruptionBudget configuration for CLI
     podDisruptionBudget:
-      enabled: false  # Set to true to enable PDB for CLI
-      minAvailable: 2  # Minimum number of pods that must be available during disruptions
+      enabled: false # Set to true to enable PDB for CLI
+      minAvailable: 2 # Minimum number of pods that must be available during disruptions
       # maxUnavailable: 1  # Alternative: Maximum number of pods that can be unavailable
   # CronJob configuration (for periodic tasks)
   cronjob:
-    enabled: true  # Set to true to enable CronJob
-    schedule: "* * * * *"  # Run every 10 minutes (cron format)
-    command: "python cli.py system network ips"  # Command to run periodically
-    waitForBackend: true  # Wait for backend service to be ready before running
-    maxWaitSeconds: 300  # Maximum seconds to wait for backend (default: 5 minutes)
-    concurrencyPolicy: Forbid  # Prevent concurrent job executions (Forbid, Allow, Replace)
-    successfulJobsHistoryLimit: 3  # Number of successful jobs to keep
-    failedJobsHistoryLimit: 1  # Number of failed jobs to keep
-    suspend: false  # Set to true to suspend the CronJob
-    backoffLimit: 3  # Number of retries before marking job as failed
-    activeDeadlineSeconds: 600  # Maximum seconds a job can run (default: 10 minutes)
+    enabled: true # Set to true to enable CronJob
+    schedule: "* * * * *" # Run every 10 minutes (cron format)
+    command: "python cli.py system network ips" # Command to run periodically
+    waitForBackend: true # Wait for backend service to be ready before running
+    maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
+    concurrencyPolicy: Forbid # Prevent concurrent job executions (Forbid, Allow, Replace)
+    successfulJobsHistoryLimit: 3 # Number of successful jobs to keep
+    failedJobsHistoryLimit: 1 # Number of failed jobs to keep
+    suspend: false # Set to true to suspend the CronJob
+    backoffLimit: 3 # Number of retries before marking job as failed
+    activeDeadlineSeconds: 600 # Maximum seconds a job can run (default: 10 minutes)
     resources:
       limits:
         memory: 512Mi
@@ -125,9 +125,9 @@ backend:
     # For autoscaling, use Rollout/Deployment instead
     # Pod Disruption Budget configuration
     podDisruptionBudget:
-      enabled: true  # Set to true to enable PDB
+      enabled: true # Set to true to enable PDB
       # minAvailable: 2  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
-      maxUnavailable: 1  # Maximum number of pods that can be unavailable
+      maxUnavailable: 1 # Maximum number of pods that can be unavailable
   image:
     repository: maborak/platform
     tag: "apt-backend-0.2"
@@ -140,7 +140,7 @@ backend:
       memory: 512Mi
       cpu: 500m
   service:
-    type: ClusterIP  # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP # Options: ClusterIP, NodePort, LoadBalancer
     # nodePort: 30090  # Only used if type is NodePort
   healthCheck:
     enabled: true
@@ -166,10 +166,10 @@ backend:
   # Backend environment variables (APT_BACKEND_* prefix)
   # All env vars with full names including prefix - no transformation needed
   env:
-    APT_BACKEND_DATABASE_URL: ""  # External database URL
+    APT_BACKEND_DATABASE_URL: "" # External database URL
     APT_BACKEND_DB_USE_REPLICA_ENGINE: "false"
-    APT_BACKEND_DB_READ_URL: ""  # Read replica database URL (optional, for read-only queries)
-    APT_BACKEND_DB_WRITE_URL: ""  # Write database URL (optional, for write operations)
+    APT_BACKEND_DB_READ_URL: "" # Read replica database URL (optional, for read-only queries)
+    APT_BACKEND_DB_WRITE_URL: "" # Write database URL (optional, for write operations)
     APT_BACKEND_DB_ECHO: "false"
     APT_BACKEND_DB_ECHO_POOL: "false"
     APT_BACKEND_DB_POOL_SIZE: "20"
@@ -177,12 +177,13 @@ backend:
     APT_BACKEND_DB_POOL_TIMEOUT: "30"
     APT_BACKEND_DB_POOL_RECYCLE: "3600"
 
-    APT_BACKEND_DB_READ_POOL_SIZE: "10"  # Read replica connection pool size
-    APT_BACKEND_DB_WRITE_POOL_SIZE: "20"  # Write database connection pool size
+    APT_BACKEND_DB_READ_POOL_SIZE: "10" # Read replica connection pool size
+    APT_BACKEND_DB_WRITE_POOL_SIZE: "20" # Write database connection pool size
     APT_BACKEND_UVI_HOST: "0.0.0.0"
     APT_BACKEND_UVI_PORT: "9000"
     APT_BACKEND_RELOAD: "false"
     APT_BACKEND_LOG_LEVEL: "info"
+    APT_BACKEND_CLI_LOG_LEVEL: "info"
     APT_BACKEND_DEBUG_MODE: "false"
     APT_BACKEND_UVI_ACCESS_LOG: "true"
     APT_BACKEND_UVI_WORKERS: "5"
@@ -194,12 +195,12 @@ backend:
     APT_BACKEND_JWT_ACCESS_TOKEN_EXPIRY: "3600"
     APT_BACKEND_JWT_REFRESH_TOKEN_EXPIRY: "2592000"
     # CAPTCHA Configuration
-    APT_BACKEND_CAPTCHA_TYPE: "turnstile"  # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
-    APT_BACKEND_RECAPTCHA_V3_SECRET_KEY: "6Lejc1csAAAAAI-_ifGaGOLIK8jyk3Mv78-i3wtp"  # Google reCAPTCHA v3 secret key
-    APT_BACKEND_TURNSTILE_SECRET_KEY: "0x4AAAAAACSywaSu-nfefLxLT2pQJxV5vf0"  # Cloudflare Turnstile secret key
-    APT_BACKEND_RECAPTCHA_V3_THRESHOLD: "0.5"  # reCAPTCHA v3 score threshold (0.0 to 1.0)
+    APT_BACKEND_CAPTCHA_TYPE: "turnstile" # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
+    APT_BACKEND_RECAPTCHA_V3_SECRET_KEY: "6Lejc1csAAAAAI-_ifGaGOLIK8jyk3Mv78-i3wtp" # Google reCAPTCHA v3 secret key
+    APT_BACKEND_TURNSTILE_SECRET_KEY: "0x4AAAAAACSywaSu-nfefLxLT2pQJxV5vf0" # Cloudflare Turnstile secret key
+    APT_BACKEND_RECAPTCHA_V3_THRESHOLD: "0.5" # reCAPTCHA v3 score threshold (0.0 to 1.0)
     # Domain Configuration
-    DOMAIN_UI: ""  # UI domain for email links (verification, password reset, etc.) - Auto-generated from global.domain.ui if empty
+    DOMAIN_UI: "" # UI domain for email links (verification, password reset, etc.) - Auto-generated from global.domain.ui if empty
     APT_BACKEND_CORS_ORIGINS: "*"
     APT_BACKEND_CORS_ALLOW_CREDENTIALS: "true"
     APT_BACKEND_CORS_ALLOW_METHODS: "*"
@@ -263,8 +264,8 @@ backend:
     APT_BACKEND_SCREENSHOT_ON_CHANGES: "false"
     APT_BACKEND_SCREENSHOT_ALWAYS: "true"
     APT_BACKEND_SCREENSHOT_MAX_RETRIES: "3"
-    APT_BACKEND_SCREENSHOT_STORAGE_PATH: "/var/screenshots"  # Mounted from global.storage (shared with CLI Job)
-    APT_BACKEND_SCREENSHOT_SERVICE_URL: ""  # Auto-generated from screenshot service if empty
+    APT_BACKEND_SCREENSHOT_STORAGE_PATH: "/var/screenshots" # Mounted from global.storage (shared with CLI Job)
+    APT_BACKEND_SCREENSHOT_SERVICE_URL: "" # Auto-generated from screenshot service if empty
     APT_BACKEND_SCREENSHOT_SERVICE_WIDTH: "1200"
     APT_BACKEND_SCREENSHOT_SERVICE_HEIGHT: "960"
     APT_BACKEND_SCREENSHOT_SERVICE_FULL_PAGE: "false"
@@ -276,78 +277,83 @@ backend:
     # Cookie lifetime threshold (for --orphans flag)
     APT_BACKEND_COOKIE_LIFETIME: "3600"
     # Hook Handlers Configuration
-    APT_BACKEND_HOOKS_USE_DB_CONFIG: "false"  # Use database config for hook handlers
-    APT_BACKEND_HOOK_LOG_ENABLED: "true"  # Enable log handler
+    APT_BACKEND_HOOKS_USE_DB_CONFIG: "false" # Use database config for hook handlers
+    APT_BACKEND_HOOK_LOG_ENABLED: "true" # Enable log handler
     # Email Handler Configuration
-    APT_BACKEND_HOOK_EMAIL_ENABLED: "true"  # Enable email handler
-    APT_BACKEND_HOOK_EMAIL_SENDER: "wilmer@maborak.com"  # Email sender address
-    APT_BACKEND_HOOK_EMAIL_SENDER_NAME: "Amazon Watcher"  # Email sender name
-    APT_BACKEND_HOOK_EMAIL_RECEIVER: "maborak@gmail.com"  # Default email receiver
-    APT_BACKEND_HOOK_EMAIL_USERNAME: "sender"  # SMTP username
-    APT_BACKEND_HOOK_EMAIL_PASSWORD: "nulled-by-wilmer-taiquuj0ieng6Sa9Veejoh"  # SMTP password
-    APT_BACKEND_HOOK_EMAIL_SMTP_HOST: "142.44.188.182"  # SMTP host
-    APT_BACKEND_HOOK_EMAIL_SMTP_PORT: "2525"  # SMTP port
-    APT_BACKEND_HOOK_EMAIL_SMTP_SECURITY: "plain"  # SMTP security: "ssl", "starttls", or "plain"
-    APT_BACKEND_HOOK_EMAIL_SMTP_VERIFY_SSL: "false"  # Verify SSL certificate
-    APT_BACKEND_HOOK_EMAIL_CONTENT_ENCODING: "quoted-printable"  # Content encoding: "quoted-printable", "base64", or "7bit"
-    APT_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "infra-aws"  # Email template set name (e.g., "default", "minimal", "corporate")
-    APT_BACKEND_HOOK_EMAIL_TEMPLATES_DIR: ""  # Custom templates directory path (empty for default)
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_NEW: "true"  # Notify on new products
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_CHANGED: "true"  # Notify on changed products
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_UPDATED: "false"  # Notify on updated products
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_NOT_CHANGED: "false"  # Notify on unchanged products
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_SAVED: "false"  # Notify on saved products
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_VERIFICATION: "true"  # Send verification emails
-    APT_BACKEND_HOOK_EMAIL_VERIFICATION_PATH: "/account/verify"  # Verification link path (appended to DOMAIN_UI)
-    APT_BACKEND_HOOK_EMAIL_NOTIFY_PASSWORD_RESET: "true"  # Send password reset emails
-    APT_BACKEND_HOOK_EMAIL_PASSWORD_RESET_PATH: "/account/reset-password"  # Password reset link path (appended to DOMAIN_UI)
+    APT_BACKEND_HOOK_EMAIL_ENABLED: "true" # Enable email handler
+    APT_BACKEND_HOOK_EMAIL_SENDER: "wilmer@maborak.com" # Email sender address
+    APT_BACKEND_HOOK_EMAIL_SENDER_NAME: "Amazon Watcher" # Email sender name
+    APT_BACKEND_HOOK_EMAIL_RECEIVER: "maborak@gmail.com" # Default email receiver
+    APT_BACKEND_HOOK_EMAIL_USERNAME: "sender" # SMTP username
+    APT_BACKEND_HOOK_EMAIL_PASSWORD: "nulled-by-wilmer-taiquuj0ieng6Sa9Veejoh" # SMTP password
+    APT_BACKEND_HOOK_EMAIL_SMTP_HOST: "142.44.188.182" # SMTP host
+    APT_BACKEND_HOOK_EMAIL_SMTP_PORT: "2525" # SMTP port
+    APT_BACKEND_HOOK_EMAIL_SMTP_SECURITY: "plain" # SMTP security: "ssl", "starttls", or "plain"
+    APT_BACKEND_HOOK_EMAIL_SMTP_VERIFY_SSL: "false" # Verify SSL certificate
+    APT_BACKEND_HOOK_EMAIL_CONTENT_ENCODING: "quoted-printable" # Content encoding: "quoted-printable", "base64", or "7bit"
+    APT_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "infra-aws" # Email template set name (e.g., "default", "minimal", "corporate")
+    APT_BACKEND_HOOK_EMAIL_TEMPLATES_DIR: "" # Custom templates directory path (empty for default)
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_NEW: "true" # Notify on new products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_CHANGED: "true" # Notify on changed products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_UPDATED: "false" # Notify on updated products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_NOT_CHANGED: "false" # Notify on unchanged products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_SAVED: "false" # Notify on saved products
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_USERS: "true"
+    APT_BACKEND_HOOK_NOTIFY_USERS_PRICE_CHECKED: "false"
+    APT_BACKEND_HOOK_NOTIFY_USERS_PRICE_NOT_CHANGED: "false"
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_VERIFICATION: "true" # Send verification emails
+    APT_BACKEND_HOOK_EMAIL_VERIFICATION_PATH: "/account/verify" # Verification link path (appended to DOMAIN_UI)
+    APT_BACKEND_HOOK_EMAIL_RECIPIENT_VERIFICATION_PATH: "/account/verify-recipient"
+    APT_BACKEND_HOOK_EMAIL_NOTIFY_PASSWORD_RESET: "true" # Send password reset emails
+    APT_BACKEND_HOOK_EMAIL_PASSWORD_RESET_PATH: "/account/reset-password" # Password reset link path (appended to DOMAIN_UI)
+    APT_BACKEND_DATA_SOURCE: "scraping"
   # Screenshot storage volume (deprecated - use global.storage instead)
   # This section is kept for backward compatibility but is ignored if global.storage.enabled is true
   screenshotStorage:
-    enabled: false  # Deprecated: use global.storage instead
+    enabled: false # Deprecated: use global.storage instead
   # Pod Disruption Budget configuration
   podDisruptionBudget:
-    enabled: false  # Set to true to enable PDB
+    enabled: false # Set to true to enable PDB
     # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
-    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+    maxUnavailable: 1 # Maximum number of pods that can be unavailable
   # Network Policy configuration
   networkPolicy:
-    enabled: false  # Set to true to enable NetworkPolicy
+    enabled: false # Set to true to enable NetworkPolicy
     # ingress: []  # Custom ingress rules (if not provided, defaults are used)
     # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
-    progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+    revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null
+    progressDeadlineSeconds: 1800 # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
     # To enable progressive canary deployment (Upwork-style), uncomment and configure:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Set initial traffic weight (1%)
-        - setWeight: 1
-        # Step 2: Verify canary pod is healthy before proceeding
-        # Checks the health endpoint 3 times with 30s intervals
-        # Fails if any check returns non-200 status code
-        - analysis:
-            templates:
-            - templateName: backend-health-check
-        # Step 3: Pause for manual verification (duration: 0 = manual pause)
-        - pause:
-            duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
-        # Step 4: Set traffic weight to 50%
-        - setWeight: 50
-        # Step 5: Pause for automated verification (10 minutes)
-        - pause:
-            duration: 60  # 1 minutes (60 seconds)
-        # Step 6: Complete rollout (100% traffic)
-        - setWeight: 100
+          # Step 1: Set initial traffic weight (1%)
+          - setWeight: 1
+          # Step 2: Verify canary pod is healthy before proceeding
+          # Checks the health endpoint 3 times with 30s intervals
+          # Fails if any check returns non-200 status code
+          - analysis:
+              templates:
+                - templateName: backend-health-check
+          # Step 3: Pause for manual verification (duration: 0 = manual pause)
+          - pause:
+              duration: 0 # Manual pause - requires promotion via ArgoCD UI or CLI
+          # Step 4: Set traffic weight to 50%
+          - setWeight: 50
+          # Step 5: Pause for automated verification (10 minutes)
+          - pause:
+              duration: 60 # 1 minutes (60 seconds)
+          # Step 6: Complete rollout (100% traffic)
+          - setWeight: 100
         # Optional: Traffic routing (requires Istio/Linkerd service mesh)
         # trafficRouting:
         #   istio:
@@ -365,7 +371,7 @@ backend:
     #     autoPromotionEnabled: true
   # Horizontal Pod Autoscaler configuration
   autoscaling:
-    enabled: true  # Set to true to enable HPA
+    enabled: true # Set to true to enable HPA
     minReplicas: 1
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
@@ -388,9 +394,9 @@ backend:
 # A utility deployment for running migrations and other administrative commands
 # Uses the same image and configuration as backend, but runs sleep infinity
 maborak:
-  enabled: true  # Set to true to enable Maborak deployment
-  replicas: 1  # Number of replicas (typically 1 for utility pod)
-  revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
+  enabled: true # Set to true to enable Maborak deployment
+  replicas: 1 # Number of replicas (typically 1 for utility pod)
+  revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null
   resources:
     limits:
       memory: 1Gi
@@ -400,7 +406,7 @@ maborak:
       cpu: 500m
   # Network Policy configuration
   networkPolicy:
-    enabled: true  # Set to true to enable NetworkPolicy (required for database access if network policies are enforced)
+    enabled: true # Set to true to enable NetworkPolicy (required for database access if network policies are enforced)
     # egress: []  # Custom egress rules (if not provided, defaults allow database and screenshot access)
 
 # UI Service Configuration
@@ -419,7 +425,7 @@ ui:
       memory: 512Mi
       cpu: 100m
   service:
-    type: ClusterIP  # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP # Options: ClusterIP, NodePort, LoadBalancer
     # nodePort: 30080  # Only used if type is NodePort
   healthCheck:
     enabled: true
@@ -432,57 +438,61 @@ ui:
   # UI environment variables (VITE_* prefix)
   # All env vars with full names including prefix - no transformation needed
   env:
-    VITE_API_BASE_URL: ""  # Auto-generated from backend domain if empty (uses //api.amazon-watcher.local)
+    VITE_API_BASE_URL: "" # Auto-generated from backend domain if empty (uses //api.amazon-watcher.local)
     VITE_API_TIMEOUT: "30"
+    VITE_API_CACHE_TTL: "10000"
     VITE_CONNECTIVITY_CHECK_INTERVAL: "60"
     VITE_APP_NAME: "Amazon Watcher"
     VITE_APP_VERSION: "1.0.0"
+    VITE_LOADER_TYPE: "shimmer" # Options: simple, progress_bar, skeleton, shimmer
     VITE_BUILD_DATE: ""
+    VITE_DEFAULT_COUNTRY: "ALL"
+    VITE_DEFAULT_COUNTRY_DATA: "US"
     VITE_PRICE_HISTORY_LIMIT: "50"
     VITE_PRICE_HISTORY_PAGE_SIZE: "10"
     VITE_DEBUG_MODE: "true"
     VITE_LOG_LEVEL: "info"
     # CAPTCHA Configuration
-    VITE_CAPTCHA_PROVIDER: "turnstile"  # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
-    VITE_RECAPTCHA_SITE_KEY: "6Lejc1csAAAAAMcSkjVoAD4xGm1Nm6aIwhy1AUrL"  # Google reCAPTCHA v3 site key (public key)
-    VITE_TURNSTILE_SITE_KEY: "0x4AAAAAACSywe2vgnS_c_an"  # Cloudflare Turnstile site key (public key)
+    VITE_CAPTCHA_PROVIDER: "turnstile" # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
+    VITE_RECAPTCHA_SITE_KEY: "6Lejc1csAAAAAMcSkjVoAD4xGm1Nm6aIwhy1AUrL" # Google reCAPTCHA v3 site key (public key)
+    VITE_TURNSTILE_SITE_KEY: "0x4AAAAAACSywe2vgnS_c_an" # Cloudflare Turnstile site key (public key)
   # Pod Disruption Budget configuration
   podDisruptionBudget:
-    enabled: false  # Set to true to enable PDB
+    enabled: false # Set to true to enable PDB
     # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
-    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+    maxUnavailable: 1 # Maximum number of pods that can be unavailable
   # Network Policy configuration
   networkPolicy:
-    enabled: false  # Set to true to enable NetworkPolicy
+    enabled: false # Set to true to enable NetworkPolicy
     # ingress: []  # Custom ingress rules (if not provided, defaults are used)
     # egress: []  # Custom egress rules (if not provided, defaults are used)
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
-    progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+    revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null
+    progressDeadlineSeconds: 1800 # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
     # To enable progressive canary deployment (Upwork-style), uncomment and configure:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Set initial traffic weight (1%)
-        - setWeight: 1
-        # Step 2: Pause for manual verification (duration: 0 = manual pause)
-        - pause:
-            duration: 0  # Manual pause - requires promotion via ArgoCD UI or CLI
-        # Step 3: Set traffic weight to 50%
-        - setWeight: 50
-        # Step 4: Pause for automated verification (2 minutes)
-        - pause:
-            duration: 120  # 2 minutes (120 seconds)
-        # Step 5: Complete rollout (100% traffic)
-        - setWeight: 100
+          # Step 1: Set initial traffic weight (1%)
+          - setWeight: 1
+          # Step 2: Pause for manual verification (duration: 0 = manual pause)
+          - pause:
+              duration: 0 # Manual pause - requires promotion via ArgoCD UI or CLI
+          # Step 3: Set traffic weight to 50%
+          - setWeight: 50
+          # Step 4: Pause for automated verification (2 minutes)
+          - pause:
+              duration: 120 # 2 minutes (120 seconds)
+          # Step 5: Complete rollout (100% traffic)
+          - setWeight: 100
         # Optional: Analysis templates for automated verification
         # analysis:
         #   templates:
@@ -504,7 +514,7 @@ ui:
     #     autoPromotionEnabled: true
   # Horizontal Pod Autoscaler configuration
   autoscaling:
-    enabled: true  # Set to true to enable HPA
+    enabled: true # Set to true to enable HPA
     minReplicas: 1
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
@@ -539,7 +549,7 @@ screenshot:
       memory: 1Gi
       cpu: 500m
   service:
-    type: ClusterIP  # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP # Options: ClusterIP, NodePort, LoadBalancer
     # nodePort: 30300  # Only used if type is NodePort
   healthCheck:
     enabled: true
@@ -551,31 +561,31 @@ screenshot:
     failureThreshold: 3
   # Argo Rollout configuration
   rollout:
-    revisionHistoryLimit: null  # Uses global.revisionHistoryLimit if null
-    progressDeadlineSeconds: 1800  # 30 minutes timeout for rollout progress
+    revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null
+    progressDeadlineSeconds: 1800 # 30 minutes timeout for rollout progress
     # Deployment strategy (optional - defaults to simple canary with no steps)
     # If not specified, uses canary strategy with empty steps (rolling update behavior)
     # To enable progressive canary deployment (Upwork-style), uncomment and configure:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null  # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
         steps:
-        # Step 1: Set initial traffic weight (1%)
-        - setWeight: 1
-        # Step 2: Pause for manual verification (duration: 0 = manual pause)
-        - pause:
-            duration: 0  # Manual pause - requires promotion
-        # Step 3: Set traffic weight to 50%
-        - setWeight: 50
-        # Step 4: Pause for automated verification (2 minutes)
-        - pause:
-            duration: 120  # 2 minutes
-        # Step 5: Complete rollout (100% traffic)
-        - setWeight: 100
+          # Step 1: Set initial traffic weight (1%)
+          - setWeight: 1
+          # Step 2: Pause for manual verification (duration: 0 = manual pause)
+          - pause:
+              duration: 0 # Manual pause - requires promotion
+          # Step 3: Set traffic weight to 50%
+          - setWeight: 50
+          # Step 4: Pause for automated verification (2 minutes)
+          - pause:
+              duration: 120 # 2 minutes
+          # Step 5: Complete rollout (100% traffic)
+          - setWeight: 100
         # Optional: Analysis templates for automated verification
         # analysis:
         #   templates:
@@ -601,7 +611,7 @@ screenshot:
     minReplicas: 1
     maxReplicas: 10
     targetCPUUtilizationPercentage: 50
-    targetMemoryUtilizationPercentage: null  # Set to enable memory-based scaling
+    targetMemoryUtilizationPercentage: null # Set to enable memory-based scaling
     # Optional: Custom scaling behavior
     # behavior:
     #   scaleDown:
@@ -653,29 +663,29 @@ screenshot:
     APT_BROWSER_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
   # Pod Disruption Budget configuration
   podDisruptionBudget:
-    enabled: false  # Set to true to enable PDB
+    enabled: false # Set to true to enable PDB
     # minAvailable: 1  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
-    maxUnavailable: 1  # Maximum number of pods that can be unavailable
+    maxUnavailable: 1 # Maximum number of pods that can be unavailable
   # Network Policy configuration
   networkPolicy:
-    enabled: false  # Set to true to enable NetworkPolicy
+    enabled: false # Set to true to enable NetworkPolicy
     # ingress: []  # Custom ingress rules (if not provided, defaults are used)
     # egress: []  # Custom egress rules (if not provided, defaults are used)
 
 # Istio Service Mesh Configuration
 # Required for Argo Rollouts traffic splitting with canary deployments
 istio:
-  enabled: false  # Set to true if Istio is installed in your cluster
+  enabled: false # Set to true if Istio is installed in your cluster
   virtualService:
-    enabled: false  # Set to true to create VirtualService for traffic routing
+    enabled: false # Set to true to create VirtualService for traffic routing
     # Custom routes (if not provided, default routes for Rollout canary are used)
     # routes: []
   destinationRule:
-    enabled: false  # Set to true to create DestinationRule for canary subsets
+    enabled: false # Set to true to create DestinationRule for canary subsets
     # Custom traffic policy (optional)
     # trafficPolicy: {}
   telemetry:
-    enabled: false  # Set to true to create Telemetry resources for observability
+    enabled: false # Set to true to create Telemetry resources for observability
     # Custom metrics configuration (optional)
     # metrics: []
     # Custom access logging (optional)
@@ -688,8 +698,8 @@ istio:
 # Note: Ingress resources are only created if both enabled=true AND className is set
 ingress:
   enabled: true
-  className: "nginx"  # Set to your ingress controller class (e.g., "nginx", "traefik"). If empty, Ingress resources will not be created.
-  
+  className: "nginx" # Set to your ingress controller class (e.g., "nginx", "traefik"). If empty, Ingress resources will not be created.
+
   # TLS/SSL Configuration
   tls:
     enabled: false
@@ -720,7 +730,7 @@ podSecurityContext:
 securityContext:
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: false
 
@@ -744,17 +754,17 @@ argocd:
   # ArgoCD annotations for sync control and metadata
   annotations:
     # Application metadata (similar to Upwork pattern)
-    app.maborak.com/contact: "wilmer@maborak.com"  # e.g., "team@maborak.com"
-    app.maborak.com/created-by: "argo-cd"  # Indicates ArgoCD created this resource
-    app.maborak.com/department: "Platform"  # e.g., "platform", "engineering"
-    app.maborak.com/project: "amazon-watcher-stack"  # e.g., "amazon-watcher"
-    
+    app.maborak.com/contact: "wilmer@maborak.com" # e.g., "team@maborak.com"
+    app.maborak.com/created-by: "argo-cd" # Indicates ArgoCD created this resource
+    app.maborak.com/department: "Platform" # e.g., "platform", "engineering"
+    app.maborak.com/project: "amazon-watcher-stack" # e.g., "amazon-watcher"
+
     # Argo Rollouts notifications (Slack, etc.)
     # notifications.argoproj.io/subscribe.on-rollout-aborted.slack: "channel-name"
     # notifications.argoproj.io/subscribe.on-rollout-completed.slack: "channel-name"
     # notifications.argoproj.io/subscribe.on-rollout-step-completed.slack: "channel-name"
     # notifications.argoproj.io/subscribe.on-rollout-updated.slack: "channel-name"
-    
+
     # Sync control annotations
     # argocd.argoproj.io/sync-wave: "0"  # Lower numbers sync first
     # argocd.argoproj.io/sync-options: "Prune=false"  # Comma-separated options
@@ -762,35 +772,35 @@ argocd:
     # argocd.argoproj.io/hook-weight: "0"  # Hook execution order
     # argocd.argoproj.io/refresh: "hard"  # Refresh mode: normal, hard
     # argocd.argoproj.io/compare-options: "IgnoreExtraneous"  # Compare options
-    
+
   # Application labels (similar to Upwork pattern)
   labels:
     # Standard Kubernetes labels (already included in common labels)
     # app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/component
     # app.kubernetes.io/managed-by, app.kubernetes.io/version, app.kubernetes.io/part-of
-    
+
     # Organization-specific labels
-    app.maborak.com/bounded-context: "amazon-watcher-stack"  # Domain/bounded context
-    app.maborak.com/chart-name: "amazon-watcher-stack"  # Helm chart name
-    app.maborak.com/cluster-name: "amazon-watcher-stack"  # Kubernetes cluster name
-    app.maborak.com/environment: "Development"  # Environment: prod, staging, dev
-    app.maborak.com/family: "Backend"  # Technology family: backend, frontend, database
-    app.maborak.com/runtime: "EKS"  # Runtime: eks, gke, aks, docker-desktop
-    app.maborak.com/service-runtime: "Python"  # Service runtime: nodejs, python, go
-    app.maborak.com/team: "Platform"  # Team name
-    app.maborak.com/tier: "T1"  # Application tier: T1, T2, T3
-    app.maborak.com/type: "Business"  # Application type: business, infrastructure, platform
-    
+    app.maborak.com/bounded-context: "amazon-watcher-stack" # Domain/bounded context
+    app.maborak.com/chart-name: "amazon-watcher-stack" # Helm chart name
+    app.maborak.com/cluster-name: "amazon-watcher-stack" # Kubernetes cluster name
+    app.maborak.com/environment: "Development" # Environment: prod, staging, dev
+    app.maborak.com/family: "Backend" # Technology family: backend, frontend, database
+    app.maborak.com/runtime: "EKS" # Runtime: eks, gke, aks, docker-desktop
+    app.maborak.com/service-runtime: "Python" # Service runtime: nodejs, python, go
+    app.maborak.com/team: "Platform" # Team name
+    app.maborak.com/tier: "T1" # Application tier: T1, T2, T3
+    app.maborak.com/type: "Business" # Application type: business, infrastructure, platform
+
     # ArgoCD instance label
-    argocd.argoproj.io/instance: "amazon-watcher-stack"  # ArgoCD application instance name
-    
+    argocd.argoproj.io/instance: "amazon-watcher-stack" # ArgoCD application instance name
+
     # Platform-specific labels
-    platform.maborak.com/namespace: "amazon-watcher-stack"  # Target namespace
+    platform.maborak.com/namespace: "amazon-watcher-stack" # Target namespace
     # platform.maborak.com/network-policies-version: ""
     # platform.maborak.com/istio-telemetry-api-flag: ""
-    
+
   # Legacy tags (deprecated - use labels instead, but kept for backward compatibility)
   tags:
-    environment: "Development"  # Maps to app.maborak.com/environment
-    team: "Platform"  # Maps to app.maborak.com/team
-    project: "amazon-watcher-stack"  # Maps to app.maborak.com/project
+    environment: "Development" # Maps to app.maborak.com/environment
+    team: "Platform" # Maps to app.maborak.com/team
+    project: "amazon-watcher-stack" # Maps to app.maborak.com/project
