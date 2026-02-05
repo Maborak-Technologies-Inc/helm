@@ -408,6 +408,7 @@ maborak:
   networkPolicy:
     enabled: true # Set to true to enable NetworkPolicy (required for database access if network policies are enforced)
     # egress: []  # Custom egress rules (if not provided, defaults allow database and screenshot access)
+    allowed: ["192.168.0.200/32"] # List of CIDR ranges to allow egress to (e.g., ["1.1.1.1/32", "8.8.8.8/32"])
 
 # UI Service Configuration
 ui:

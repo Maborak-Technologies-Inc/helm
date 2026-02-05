@@ -50,5 +50,13 @@ spec:
           port: 53  # DNS
         - protocol: TCP
           port: 53  # DNS over TCP
+    {{- if .Values.maborak.networkPolicy.allowed }}
+    # Allow egress to specified IPs
+    - to:
+        {{- range .Values.maborak.networkPolicy.allowed }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+    {{- end }}
   {{- end }}
 {{- end }}
