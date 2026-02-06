@@ -3,10 +3,10 @@ entries:
   amazon-watcher-stack:
   - apiVersion: v2
     appVersion: "0.1"
-    created: "2026-02-05T08:37:23.31733641Z"
+    created: "2026-02-06T08:21:59.595773598Z"
     description: A Helm chart for deploying the complete Amazon Watcher Stack (Backend,
       UI, Screenshot service, Database, and Ingress routing)
-    digest: 1c5938e4ae4b90188da310615d635bec4b720edda24c35448c1dc09c722bd838
+    digest: 90fed80fb2dd2a4ad6886b9741acf2009977985ef5180de8a8de45533c1898d5
     keywords:
     - amazon
     - watcher
@@ -23,9 +23,9 @@ entries:
   zabbix:
   - apiVersion: v2
     appVersion: 7.4.6
-    created: "2026-02-05T08:37:23.317868161Z"
+    created: "2026-02-06T08:21:59.596360625Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
-    digest: 6576ff8131ff252f7787f18e739d674cfe631804fd538c2415ebc6305ba7c4b4
+    digest: 0d4556bc4222cd7cf624b38ad2a0a06aa36f8a6ebb2a13a6bcce60b7651e6b51
     icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png
     name: zabbix
     urls:
@@ -34,11 +34,11 @@ entries:
   zabbix-stack:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2026-02-05T08:37:23.318385154Z"
+    created: "2026-02-06T08:21:59.596861172Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
     digest: 7d26643e0dd7a90b3aa6f9f27835bdbcbcd55d4ccbef16a20604b4a7bc86777d
     name: zabbix-stack
     urls:
     - https://maborak-technologies-inc.github.io/helm/zabbix-stack-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-05T08:37:23.314823128Z"
+generated: "2026-02-06T08:21:59.593141903Z"
