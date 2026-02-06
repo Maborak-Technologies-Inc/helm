@@ -1,14 +1,14 @@
 # Current State - Kubernetes GitOps
 
 ### Last Completed
-- Initial platform context documentation (`PLATFORM_CONTEXT.md`, `CHART_CATALOG.md`, `ARGOCD_CONTEXT.md`, `SECURITY_POSTURE.md`).
-- Fixed NetworkPolicy egress label mismatch for DNS resolution in `amazon-watcher-stack`.
-- Updated MetalLB configuration for single-IP load balancer pool.
-- Implemented `scripts/disable_argocd_resources.sh` for Argo CD application management.
+- Unified rollout history management via `global.revisionHistoryLimit`.
+- Enhanced database StatefulSet with `pvcRetentionPolicy` and `subPath` support.
+- Refined HPA conditional logic for more robust template rendering.
+- Fixed NetworkPolicy egress for DNS resolution.
 
 ### In Progress
+- Reviewing documentation consistency across context files.
 - Refactoring `amazon-watcher-backend-argocd.sh` for improved session handling.
-- Reviewing ingress configurations for external access consistency.
 
 ### Next Planned
 - Implement automated secret rotation for backend JWT.
@@ -16,6 +16,7 @@
 - Optimize ResourceQuotas for the `dev` environment.
 
 ### Constraints
+- `pvcRetentionPolicy` requires Kubernetes 1.27+ or specific feature gates.
 - Metrics Server on Docker Desktop requires TLS skip configuration.
 - MetalLB relies on Layer 2 advertisement; requires host-accessible IP pool.
 - Argo CD sync policies require explicit `AllowEmpty` or `IgnoreDifferences` for certain Rollout behaviors.

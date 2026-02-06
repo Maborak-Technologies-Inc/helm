@@ -19,6 +19,9 @@
 | `ingress.enabled` | Enable Ingress routing | `true` |
 | `ingress.className` | Ingress controller class | `nginx` |
 | `storage.storageClass` | Storage class for PostgreSQL | `""` (Cluster default) |
+| `global.revisionHistoryLimit` | Default old ReplicaSets to retain | `10` |
+| `database.storage.pvcRetentionPolicy` | Delete/Retain PVCs on scaledown/delete | `Retain` |
+| `database.storage.subPath` | Mount sub-directory of volume | `""` |
 | `istio.enabled` | Enable Istio service mesh resources | `false` |
 
 ### Required Secrets / Config

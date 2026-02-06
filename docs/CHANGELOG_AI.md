@@ -1,5 +1,33 @@
 # AI-Driven Changelog (GitOps)
 
+## [2026-01-29] - Global Rollout Defaults and Database Persistence Policies
+### Summary
+Implemented global configuration for rollout history retention and enhanced database persistence options, including PVC retention policies and volume subpath support. Refined HPA conditional logic.
+
+### Files Modified
+- `charts/amazon-watcher-stack/values.yaml`: Added `global.revisionHistoryLimit` and database storage enhancements.
+- `charts/amazon-watcher-stack/templates/database-statefulset.yaml`: Integrated `pvcRetentionPolicy` and `subPath`.
+- `charts/amazon-watcher-stack/templates/maborak-deployment.yaml`: Migrated to global `revisionHistoryLimit`.
+- `charts/amazon-watcher-stack/templates/screenshot-rollout.yaml`: Migrated to global `revisionHistoryLimit` and updated HPA check.
+- `charts/amazon-watcher-stack/templates/ui-rollout.yaml`: Migrated to global `revisionHistoryLimit` and updated HPA check.
+
+### Deployment Impact
+- **StatefulSet Management**: Database PVCs can now be automatically deleted when the StatefulSet is removed or scaled down if `pvcRetentionPolicy` is set (requires K8s 1.27+).
+- **Rollout History**: Standardized on 10 revisions globally, reducing cluster metadata overhead for old ReplicaSets.
+
+### GitOps Impact
+- **Consistency**: Argo CD now reconciles a unified `revisionHistoryLimit` across all components via global defaults.
+
+### Helm Impact
+- **Global Defaults**: Introduced `global.revisionHistoryLimit` to reduce boilerplate across service values.
+- **Persistence Flexibility**: Added `subPath` support for database volume mounts.
+
+### Security Impact
+- No significant changes to RBAC or isolation.
+
+### Notes/Follow-ups
+- Ensure target clusters are running K8s 1.27+ for `pvcRetentionPolicy` features.
+
 ## [2026-01-28] - Fixed NetworkPolicy and Platform Config
 ### Summary
 Fixed labeling issues for DNS resolution in NetworkPolicy, updated MetalLB address pool, and added Argo CD resource management automation. Initial platform documentation was also established.

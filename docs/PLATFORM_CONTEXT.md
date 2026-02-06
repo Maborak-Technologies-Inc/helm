@@ -44,6 +44,8 @@
 - **Naming**: 
   - Resource names follow `<chart-name>-<release-name>` pattern using Helm helpers.
   - PascalCase required for certain cluster-scoped resource kinds in Argo CD projects (e.g., `PersistentVolume`).
+- **Global Defaults**: 
+  - `revisionHistoryLimit`: Defaulted to 10 via `global` values to standardize resource retention across microservices.
 - **Labels/Annotations**: Standard `app.kubernetes.io` labels for ownership and versioning.
 - **Versioning**: Semantic Versioning (SemVer) for charts; stable tagging for container images.
 

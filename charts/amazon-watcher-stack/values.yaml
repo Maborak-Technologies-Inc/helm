@@ -41,8 +41,8 @@ database:
     # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
     # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
     pvcRetentionPolicy:
-      whenDeleted: Retain # Options: Retain (default), Delete
-      whenScaled: Retain # Options: Retain (default), Delete
+      whenDeleted: Delete  # Options: Retain (default), Delete
+      whenScaled: Retain   # Options: Retain (default), Delete
   resources:
     limits:
       memory: 1Gi
@@ -331,7 +331,7 @@ backend:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: 0  # Minimum pods to remain during rollout
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
@@ -477,7 +477,7 @@ ui:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: 0  # Minimum pods to remain during rollout
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
@@ -570,7 +570,7 @@ screenshot:
     strategy:
       canary:
         # Minimum pods per replica set (ensures canary has enough pods)
-        minPodsPerReplicaSet: null # Set to number (e.g., 2) if needed
+        minPodsPerReplicaSet: 0  # Minimum pods to remain during rollout
         # Canary deployment steps (progressive rollout)
         # Note: setWeight requires trafficRouting (Istio/NGINX) to actually split traffic
         # Without trafficRouting, this is metadata-only for tracking progress
