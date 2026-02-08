@@ -5,6 +5,9 @@ nameOverride: "apt"
 fullnameOverride: ""
 
 # Global configuration
+imagePullSecrets:
+  - name: apt-docker-server
+
 global:
   context: amazon-watcher
   domain:
