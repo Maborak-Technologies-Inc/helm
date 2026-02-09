@@ -73,17 +73,24 @@ backend:
   cli:
     enabled: false # Set to true to enable CLI Rollout
     replicas: 1 # Number of replicas (used when HPA is disabled)
+    storage:
+      enabled: false # Disable storage to allow pods to spread across nodes
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short" # Command to run continuously
     waitForBackend: true # Wait for backend service to be ready before starting
     maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
     # Autoscaling configuration for CLI Rollout
     autoscaling:
       enabled: true # Set to true to enable HPA for CLI
-      minReplicas: 1 # Minimum number of CLI pods (HPA will scale down to this)
-      maxReplicas: 10 # Maximum number of CLI pods (HPA will scale up to this)
+      minReplicas: 2 # Minimum number of CLI pods (HPA will scale down to this)
+      maxReplicas: 5 # Maximum number of CLI pods (HPA will scale up to this)
       targetCPUUtilizationPercentage: 80 # Target CPU utilization percentage
-      # targetMemoryUtilizationPercentage: 80  # Optional: Target memory utilization percentage
-      # behavior: {}  # Optional: Custom scaling behavior (scaleUp/scaleDown policies)
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
     # Rollout configuration for CLI
     rollout:
       revisionHistoryLimit: null # Uses global.revisionHistoryLimit if null

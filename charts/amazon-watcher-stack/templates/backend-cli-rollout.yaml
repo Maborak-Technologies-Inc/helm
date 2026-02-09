@@ -146,7 +146,7 @@ spec:
             {{- end }}
           # Iterate over all env vars from values.yaml - same as backend rollout
           {{- include "amazon-watcher-stack.backend.env" . | nindent 10 }}
-        {{- if .Values.global.storage.enabled }}
+        {{- if and .Values.global.storage.enabled (ne (index .Values.backend.cli "storage" "enabled" | default true) false) }}
         volumeMounts:
           - name: cli-storage
             mountPath: {{ if and (hasKey .Values.backend.cli "storage") (hasKey .Values.backend.cli.storage "mountPath") }}{{ .Values.backend.cli.storage.mountPath }}{{ else }}/var/screenshots{{ end }}
@@ -157,7 +157,7 @@ spec:
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-      {{- if .Values.global.storage.enabled }}
+      {{- if and .Values.global.storage.enabled (ne (index .Values.backend.cli "storage" "enabled" | default true) false) }}
       volumes:
         - name: cli-storage
           persistentVolumeClaim:

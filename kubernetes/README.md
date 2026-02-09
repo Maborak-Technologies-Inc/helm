@@ -8,10 +8,11 @@ This document describes all the Kubernetes infrastructure components installed a
 2. [NGINX Ingress Controller](#nginx-ingress-controller)
 3. [Argo Rollouts](#argo-rollouts)
 4. [Metrics Server](#metrics-server)
-5. [ArgoCD](#argocd)
-6. [Component Integration](#component-integration)
-7. [Verification Commands](#verification-commands)
-8. [Troubleshooting](#troubleshooting)
+5. [Dynamic Storage Provisioner](#dynamic-storage-provisioner)
+6. [ArgoCD](#argocd)
+7. [Component Integration](#component-integration)
+8. [Verification Commands](#verification-commands)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -363,6 +364,58 @@ spec:
 
 ---
 
+---
+
+## Dynamic Storage Provisioner
+
+### Overview
+
+Overview
+For local or bare-metal clusters (like Docker Desktop or on-premise), a dynamic storage provisioner is required to automatically create PersistentVolumes (PVs) when a PersistentVolumeClaim (PVC) is created. We use the **Local Path Provisioner** by Rancher.
+
+### Installation
+
+```bash
+# Install Local Path Provisioner
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
+# Set as Default StorageClass
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+### Verification
+
+```bash
+# Check if the provisioner pod is running
+kubectl get pods -n local-path-storage
+
+# Verify StorageClass is default
+kubectl get sc
+# Output should show: local-path (default)
+```
+
+### Usage
+
+When you create a PVC, simply omit the `storageClassName` (to use default) or specify asking for `local-path`.
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: test-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+It will automatically create a host path directory on the node (usually under `/opt/local-path-provisioner/`).
+
+---
+
 ## ArgoCD
 
 ### Overview
@@ -371,25 +424,63 @@ ArgoCD is a GitOps continuous delivery tool for Kubernetes. It automatically syn
 
 ### Installation
 
-See `docs/ZABBIX_ARGOCD_SETUP.md` for detailed ArgoCD installation instructions.
+For a comprehensive guide, see [`docs/ZABBIX_ARGOCD_SETUP.md`](../docs/ZABBIX_ARGOCD_SETUP.md).
+
+#### Quick Install (Non-HA)
+
+```bash
+# Create namespace
+kubectl create namespace argocd
+
+# Add Helm repo
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+
+# Install ArgoCD (allowing cluster-scoped resources)
+helm install argocd argo/argo-cd -n argocd \
+  --set server.service.type=NodePort \
+  --set controller.applicationNamespaces=""
+```
+
+#### Access ArgoCD
+
+```bash
+# Get Admin Password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+
+# Port-forward to access UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+Access at: https://localhost:8080 (Username: `admin`)
+
+#### Application Setup
+
+1.  **Create Project**:
+    ```bash
+    argocd proj create backend-stack --description "Backend Stack"
+    argocd proj allow-cluster-resource backend-stack "" PersistentVolume
+    argocd proj add-source backend-stack git@github.com:Maborak-Technologies-Inc/helm.git
+    argocd proj add-destination backend-stack https://kubernetes.default.svc automated
+    ```
+
+2.  **Add Repository**:
+    ```bash
+    argocd repo add git@github.com:Maborak-Technologies-Inc/helm.git \
+      --ssh-private-key-path ~/.ssh/id_rsa_argocd
+    ```
 
 ### Application Configuration
 
-**Application Name**: `test`  
-**Namespace**: `argocd`  
-**Chart Path**: `charts/amazon-watcher-stack`  
-**Target Namespace**: `default` (or `automated`)
+**Application Name**: `test`
+**Namespace**: `argocd`
+**Chart Path**: `charts/amazon-watcher-stack`
+**Target Namespace**: `automated`
 
 ### Sync Policy
 
-- **Auto-sync**: Enabled
-- **Self-heal**: Enabled
-- **Auto-prune**: Enabled
-
-### Access
-
-- **Port-forward**: `kubectl port-forward svc/argocd-server -n argocd 8080:443`
-- **URL**: `https://localhost:8080` (via port-forward)
+-   **Auto-sync**: Enabled
+-   **Self-heal**: Enabled
+-   **Auto-prune**: Enabled
 
 ---
 
