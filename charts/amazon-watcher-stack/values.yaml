@@ -11,19 +11,19 @@ imagePullSecrets:
 global:
   context: amazon-watcher
   domain:
-    ui: "" # UI domain (e.g., "ui.amazon-watcher.local" or "dev-ui.example.com") - Required for ingress
-    backend: "" # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
+    ui: "ui.asin.local" # UI domain (e.g., "ui.amazon-watcher.local" or "dev-ui.example.com") - Required for ingress
+    backend: "api.asin.local" # Backend domain (e.g., "api.amazon-watcher.local" or "dev-api.example.com") - Required for ingress
   # Global HPA override (empty = use individual service settings, true/false = override all)
-  hpa: "" # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
+  hpa: true # Options: "" (use individual), true (enable HPA for all), false (disable HPA for all)
   # Global rollout configuration
-  revisionHistoryLimit: 10 # Global default for number of old ReplicaSets to retain
+  revisionHistoryLimit: 3 # Global default for number of old ReplicaSets to retain
   # Global persistent storage (shared across backend, CLI jobs, and other services)
   # For local clusters with NFS, use "nfs-client"
   # For AWS EKS, use "efs-sc"
   # For GKE/Azure, use your cluster's RWX storage class
   storage:
     enabled: true # Enable global persistent storage
-    storageClassName: "" # Auto-detect "nfs-client", or use this override, or cluster default if empty
+    storageClassName: "nfs-client" # Auto-detect "nfs-client", or use this override, or cluster default if empty
     size: 10Gi # Storage size
     accessModes:
       - ReadWriteMany # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
