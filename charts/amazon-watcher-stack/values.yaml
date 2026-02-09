@@ -78,7 +78,7 @@ backend:
     replicas: 1 # Number of replicas (used when HPA is disabled)
     storage:
       enabled: true # Enable shared storage now that we have RWX support
-    command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short" # Command to run continuously
+    command: "python cli.py monitor run --batch-limit=5 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=ALL --short" # Command to run continuously
     waitForBackend: true # Wait for backend service to be ready before starting
     maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
     # Autoscaling configuration for CLI Rollout
@@ -116,8 +116,8 @@ backend:
   # CronJob configuration (for periodic tasks)
   cronjob:
     enabled: true # Set to true to enable CronJob
-    schedule: "* * * * *" # Run every 10 minutes (cron format)
-    command: "python cli.py system network ips" # Command to run periodically
+    schedule: "*/10 * * * *" # Run every 10 minutes (cron format)
+    command: "python cli.py monitor cookie --orphans" # Command to run periodically
     waitForBackend: true # Wait for backend service to be ready before running
     maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
     concurrencyPolicy: Forbid # Prevent concurrent job executions (Forbid, Allow, Replace)
