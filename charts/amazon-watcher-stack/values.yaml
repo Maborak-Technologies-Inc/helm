@@ -18,6 +18,9 @@ global:
   # Global rollout configuration
   revisionHistoryLimit: 10 # Global default for number of old ReplicaSets to retain
   # Global persistent storage (shared across backend, CLI jobs, and other services)
+  # For local clusters with NFS, use "nfs-client"
+  # For AWS EKS, use "efs-sc"
+  # For GKE/Azure, use your cluster's RWX storage class
   storage:
     enabled: true # Enable global persistent storage
     storageClassName: "nfs-client" # Storage class (empty = use default)

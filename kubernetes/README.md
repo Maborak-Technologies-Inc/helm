@@ -10,9 +10,10 @@ This document describes all the Kubernetes infrastructure components installed a
 4. [Metrics Server](#metrics-server)
 5. [Dynamic Storage Provisioner](#dynamic-storage-provisioner)
 6. [ArgoCD](#argocd)
-7. [Component Integration](#component-integration)
-8. [Verification Commands](#verification-commands)
-9. [Troubleshooting](#troubleshooting)
+7. [NFS Shared Storage (RWX)](#nfs-shared-storage-rwx)
+8. [Component Integration](#component-integration)
+9. [Verification Commands](#verification-commands)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -481,6 +482,71 @@ Access at: https://localhost:8080 (Username: `admin`)
 -   **Auto-sync**: Enabled
 -   **Self-heal**: Enabled
 -   **Auto-prune**: Enabled
+
+---
+
+## NFS Shared Storage (RWX)
+
+### Overview
+
+Standard local storage (`local-path`) is **ReadWriteOnce (RWO)**, which pins pods to the node where the data resides. For services that need to scale across multiple nodes or share files (like snapshots/screenshots), a **ReadWriteMany (RWX)** storage solution is required.
+
+We use the `nfs-subdir-external-provisioner` to provide dynamic RWX volumes using an existing NFS server.
+
+### Installation
+
+```bash
+# 1. Add Helm repository
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+helm repo update
+
+# 2. Install the provisioner
+# Replace NFS_IP and NFS_PATH with your server details
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  --set nfs.server=10.10.10.210 \
+  --set nfs.path=/srv/nfs/kubedata \
+  --set storageClass.name=nfs-client \
+  --set storageClass.defaultClass=false
+```
+
+### Verification
+
+```bash
+# Check if the provisioner pod is running
+kubectl get pods -l app=nfs-subdir-external-provisioner
+
+# Verify the StorageClass is created
+kubectl get sc nfs-client
+# Output should show: nfs-client (PROVISIONER: cluster.local/nfs-subdir-external-provisioner)
+
+# Test with a PVC
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-rwx-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+```
+
+### Usage in Helm Chart
+
+In `values.yaml`, set the storage class to `nfs-client` and access mode to `ReadWriteMany`:
+
+```yaml
+global:
+  storage:
+    enabled: true
+    storageClassName: "nfs-client"
+    accessModes:
+      - ReadWriteMany
+```
 
 ---
 
