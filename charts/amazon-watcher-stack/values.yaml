@@ -38,17 +38,17 @@ database:
     password: amazon_watcher_password
     port: 5432
     dataPath: /var/lib/postgresql/data/pgdata
-    storage:
-      storageClassName: "" # Use global smart detection
-      size: 10Gi
-      accessModes:
-        - ReadWriteOnce
+  storage:
+    storageClassName: "" # Use global smart detection
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
     # subPath: "db-data"  # Optional: mount a sub-directory of the volume
-    # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
-    # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
-    pvcRetentionPolicy:
-      whenDeleted: Delete  # Options: Retain (default), Delete
-      whenScaled: Retain   # Options: Retain (default), Delete
+  # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
+  # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
+  pvcRetentionPolicy:
+    whenDeleted: Delete  # Options: Retain (default), Delete
+    whenScaled: Retain   # Options: Retain (default), Delete
   resources:
     limits:
       memory: 1Gi
