@@ -20,10 +20,10 @@ global:
   # Global persistent storage (shared across backend, CLI jobs, and other services)
   storage:
     enabled: true # Enable global persistent storage
-    storageClassName: "" # Storage class (empty = use default)
+    storageClassName: "nfs-client" # Storage class (empty = use default)
     size: 10Gi # Storage size
     accessModes:
-      - ReadWriteOnce # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
+      - ReadWriteMany # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
 
 # Database Configuration
 database:
@@ -74,7 +74,7 @@ backend:
     enabled: true # Set to true to enable CLI Rollout
     replicas: 1 # Number of replicas (used when HPA is disabled)
     storage:
-      enabled: false # Disable storage to allow pods to spread across nodes
+      enabled: true # Enable shared storage now that we have RWX support
     command: "python cli.py monitor run --batch-limit=50 --batch-interval=1 --cooldown-limit=5 --cooldown-duration=5 --country=BO --short" # Command to run continuously
     waitForBackend: true # Wait for backend service to be ready before starting
     maxWaitSeconds: 300 # Maximum seconds to wait for backend (default: 5 minutes)
