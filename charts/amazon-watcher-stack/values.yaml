@@ -147,8 +147,8 @@ backend:
       memory: 1Gi
       cpu: 1000m
     requests:
-      memory: 512Mi
-      cpu: 500m
+      memory: 256Mi
+      cpu: 200m
   service:
     type: ClusterIP # Options: ClusterIP, NodePort, LoadBalancer
     # nodePort: 30090  # Only used if type is NodePort
