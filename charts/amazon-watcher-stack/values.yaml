@@ -39,7 +39,7 @@ database:
     port: 5432
     dataPath: /var/lib/postgresql/data/pgdata
   storage:
-    storageClassName: "local-path" # Pin to local-path for performance/stability or use global detection if empty
+    storageClassName: "" # Keep empty to match existing StatefulSet (avoid immutable field error)
     size: 10Gi
     accessModes:
       - ReadWriteOnce
