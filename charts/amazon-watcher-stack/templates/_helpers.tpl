@@ -226,3 +226,20 @@ AnalysisTemplate name for backend
 {{- define "amazon-watcher-stack.backend.analysisTemplateName" -}}
 {{- printf "%s-backend-health-check" (include "amazon-watcher-stack.fullname" .) }}
 {{- end }}
+
+{{/*
+Determine storage class name with fallbacks.
+Priority:
+1. "nfs-client" if available in the cluster (via lookup)
+2. Explicit .Values.global.storage.storageClassName if set
+3. Empty (uses cluster default)
+*/}}
+{{- define "amazon-watcher-stack.storageClass" -}}
+  {{- if (lookup "storage.k8s.io/v1" "StorageClass" "" "nfs-client") -}}
+    {{- "nfs-client" -}}
+  {{- else if .Values.global.storage.storageClassName -}}
+    {{- .Values.global.storage.storageClassName -}}
+  {{- else -}}
+    {{- "" -}}
+  {{- end -}}
+{{- end -}}

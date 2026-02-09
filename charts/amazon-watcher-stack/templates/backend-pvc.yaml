@@ -11,8 +11,9 @@ spec:
     {{- range .Values.global.storage.accessModes }}
     - {{ . | quote }}
     {{- end }}
-  {{- if .Values.global.storage.storageClassName }}
-  storageClassName: {{ .Values.global.storage.storageClassName | quote }}
+  {{- $storageClass := include "amazon-watcher-stack.storageClass" . }}
+  {{- if $storageClass }}
+  storageClassName: {{ $storageClass | quote }}
   {{- end }}
   resources:
     requests:

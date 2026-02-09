@@ -23,7 +23,7 @@ global:
   # For GKE/Azure, use your cluster's RWX storage class
   storage:
     enabled: true # Enable global persistent storage
-    storageClassName: "nfs-client" # Storage class (empty = use default)
+    storageClassName: "" # Auto-detect "nfs-client", or use this override, or cluster default if empty
     size: 10Gi # Storage size
     accessModes:
       - ReadWriteMany # Options: ReadWriteOnce, ReadWriteMany (for concurrent access)
@@ -38,11 +38,11 @@ database:
     password: amazon_watcher_password
     port: 5432
     dataPath: /var/lib/postgresql/data/pgdata
-  storage:
-    storageClassName: ""
-    size: 10Gi
-    accessModes:
-      - ReadWriteOnce
+    storage:
+      storageClassName: "" # Use global smart detection
+      size: 10Gi
+      accessModes:
+        - ReadWriteOnce
     # subPath: "db-data"  # Optional: mount a sub-directory of the volume
     # Retention policy for PVCs when StatefulSet is deleted or pods are scaled down
     # Note: Requires Kubernetes 1.27+ or StatefulSetAutoDeletePVC feature gate
