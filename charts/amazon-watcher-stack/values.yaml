@@ -71,7 +71,7 @@ backend:
   replicas: 3
   # CLI Rollout configuration (for continuous monitoring/processing)
   cli:
-    enabled: false # Set to true to enable CLI Rollout
+    enabled: true # Set to true to enable CLI Rollout
     replicas: 1 # Number of replicas (used when HPA is disabled)
     storage:
       enabled: false # Disable storage to allow pods to spread across nodes
