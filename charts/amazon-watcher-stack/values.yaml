@@ -39,7 +39,7 @@ database:
     port: 5432
     dataPath: /var/lib/postgresql/data/pgdata
   storage:
-    storageClassName: "" # Use global smart detection
+    storageClassName: "local-path" # Pin to local-path for performance/stability or use global detection if empty
     size: 10Gi
     accessModes:
       - ReadWriteOnce

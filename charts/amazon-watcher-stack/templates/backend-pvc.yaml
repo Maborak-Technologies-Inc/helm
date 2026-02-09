@@ -11,7 +11,7 @@ spec:
     {{- range .Values.global.storage.accessModes }}
     - {{ . | quote }}
     {{- end }}
-  {{- $storageClass := include "amazon-watcher-stack.storageClass" . }}
+  {{- $storageClass := .Values.global.storage.storageClassName | default (include "amazon-watcher-stack.storageClass" .) }}
   {{- if $storageClass }}
   storageClassName: {{ $storageClass | quote }}
   {{- end }}
