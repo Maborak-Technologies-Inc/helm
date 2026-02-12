@@ -179,10 +179,10 @@ backend:
   # Backend environment variables (APT_BACKEND_* prefix)
   # All env vars with full names including prefix - no transformation needed
   env:
-    APT_BACKEND_DATABASE_URL: "" # External database URL
-    APT_BACKEND_DB_USE_REPLICA_ENGINE: "false"
-    APT_BACKEND_DB_READ_URL: "" # Read replica database URL (optional, for read-only queries)
-    APT_BACKEND_DB_WRITE_URL: "" # Write database URL (optional, for write operations)
+    APT_BACKEND_DATABASE_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6432/postgres" # External database URL
+    APT_BACKEND_DB_USE_REPLICA_ENGINE: "true"
+    APT_BACKEND_DB_READ_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6433/postgres" # Read replica database URL (optional, for read-only queries)
+    APT_BACKEND_DB_WRITE_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6432/postgres" # Write database URL (optional, for write operations)
     APT_BACKEND_DB_ECHO: "false"
     APT_BACKEND_DB_ECHO_POOL: "false"
     APT_BACKEND_DB_POOL_SIZE: "20"
@@ -278,7 +278,7 @@ backend:
     APT_BACKEND_SCREENSHOT_ALWAYS: "true"
     APT_BACKEND_SCREENSHOT_MAX_RETRIES: "3"
     APT_BACKEND_SCREENSHOT_STORAGE_PATH: "/var/screenshots" # Mounted from global.storage (shared with CLI Job)
-    APT_BACKEND_SCREENSHOT_SERVICE_URL: "" # Auto-generated from screenshot service if empty
+    APT_BACKEND_SCREENSHOT_SERVICE_URL: "http://192.168.0.40:3000/amazon" # Auto-generated from screenshot service if empty
     APT_BACKEND_SCREENSHOT_SERVICE_WIDTH: "1200"
     APT_BACKEND_SCREENSHOT_SERVICE_HEIGHT: "960"
     APT_BACKEND_SCREENSHOT_SERVICE_FULL_PAGE: "false"
@@ -386,7 +386,7 @@ backend:
   autoscaling:
     enabled: true # Set to true to enable HPA
     minReplicas: 1
-    maxReplicas: 10
+    maxReplicas: 3
     targetCPUUtilizationPercentage: 80
     # targetMemoryUtilizationPercentage: 80  # Optional: enable memory-based scaling
     # behavior:  # Optional: customize scaling behavior
@@ -421,7 +421,7 @@ maborak:
   networkPolicy:
     enabled: true # Set to true to enable NetworkPolicy (required for database access if network policies are enforced)
     # egress: []  # Custom egress rules (if not provided, defaults allow database and screenshot access)
-    allowed: ["192.168.0.200/32"] # List of CIDR ranges to allow egress to (e.g., ["1.1.1.1/32", "8.8.8.8/32"])
+    allowed: ["192.168.0.0/24"] # List of CIDR ranges to allow egress to (e.g., ["1.1.1.1/32", "8.8.8.8/32"])
 
 # UI Service Configuration
 ui:
@@ -553,7 +553,7 @@ screenshot:
   replicas: 1
   image:
     repository: maborak/platform
-    tag: "apt-browser-0.2"
+    tag: "apt-browser-0.2.1"
     pullPolicy: Always
   resources:
     limits:
@@ -623,8 +623,8 @@ screenshot:
   autoscaling:
     enabled: true
     minReplicas: 1
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 50
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 90
     targetMemoryUtilizationPercentage: null # Set to enable memory-based scaling
     # Optional: Custom scaling behavior
     # behavior:

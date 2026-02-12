@@ -23,6 +23,12 @@ if ! kubectl get deployment argocd-server -n argocd &>/dev/null; then
     exit 1
 fi
 
+# Check if patch already applied
+if kubectl get deployment argocd-server -n argocd -o jsonpath='{.spec.template.spec.initContainers[*].name}' | grep -q "rollout-extension-installer"; then
+    echo "✅ Argo Rollouts UI Extension already installed. Skipping patch."
+    exit 0
+fi
+
 # Apply the patch
 echo "Applying patch to argocd-server deployment..."
 kubectl patch deployment argocd-server -n argocd --type='json' -p="$(cat "$PATCH_FILE")"
