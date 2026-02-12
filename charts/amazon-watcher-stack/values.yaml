@@ -558,7 +558,7 @@ screenshot:
   resources:
     limits:
       memory: 2Gi
-      cpu: 1000m
+      cpu: 800m
     requests:
       memory: 1Gi
       cpu: 500m
@@ -675,6 +675,17 @@ screenshot:
     APT_BROWSER_CAPTCHA_RETRY_DELAY_MAX: "4.0"
     APT_BROWSER_NAVIGATION_MAX_RETRIES: "3"
     APT_BROWSER_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+  # Affinity configuration
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/component
+            operator: In
+            values:
+            - screenshot
+        topologyKey: "kubernetes.io/hostname"
   # Pod Disruption Budget configuration
   podDisruptionBudget:
     enabled: false # Set to true to enable PDB
