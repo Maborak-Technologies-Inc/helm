@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm lint:*)",
+      "Bash(helm template:*)",
+      "Bash(helm package:*)",
+      "Bash(helm repo:*)",
+      "Bash(helm show:*)",
+      "Bash(helm dependency:*)",
+      "Bash(helm version:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl top:*)",
+      "Bash(kubectl api-resources:*)",
+      "Bash(kubectl explain:*)",
+      "Bash(kubectl auth can-i:*)",
+      "Bash(kubectl rollout status:*)",
+      "Bash(kubectl argo rollouts:*)",
+      "Bash(argocd app get:*)",
+      "Bash(argocd app list:*)",
+      "Bash(argocd app diff:*)",
+      "Bash(argocd app history:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(du:*)",
+      "Bash(wc:*)",
+      "Bash(cat charts/*/Chart.yaml)",
+      "WebSearch"
+    ]
+  }
+}

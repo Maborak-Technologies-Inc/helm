@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/wilmeradalid/code/maborak/helm -maxdepth 2 -type f \\\\\\( -name \"Makefile\" -o -name \"*.yaml\" -o -name \"*.yml\" -o -name \".cursorrules\" -o -name \"*.json\" -o -name \"*.sh\" -o -name \"CLAUDE.md\" -o -name \".github\" -o -name \"copilot-instructions.md\" \\\\\\) 2>/dev/null | head -30)",
+      "Bash(wc -l /Users/wilmeradalid/code/maborak/helm/charts/amazon-watcher-stack/templates/*.yaml 2>/dev/null | tail -1)",
+      "Bash(tree -L 2 /Users/wilmeradalid/code/maborak/helm -I '.git' 2>/dev/null || find /Users/wilmeradalid/code/maborak/helm -maxdepth 2 -type d ! -name '.git*' ! -name 'node_modules' | sort)",
+      "Bash(du -sh /Users/wilmeradalid/code/maborak/helm/charts/* 2>/dev/null)",
+      "Bash(grep -l \"helmfile\\\\|kustomize\" /Users/wilmeradalid/code/maborak/helm/**/*.*)",
+      "Bash(du:*)"
+    ]
+  }
+}
