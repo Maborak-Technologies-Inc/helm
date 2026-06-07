@@ -522,8 +522,8 @@ create_docker_registry_secret() {
 install_rollout_extension() {
     log_info "Installing Argo Rollouts Extension for ArgoCD..."
     script_path=""
-    if [ -f "kubernetes/install-rollout-extension.sh" ]; then
-        script_path="kubernetes/install-rollout-extension.sh"
+    if [ -f "kubernetes/bootstrap/install-rollout-extension.sh" ]; then
+        script_path="kubernetes/bootstrap/install-rollout-extension.sh"
     elif [ -f "install-rollout-extension.sh" ]; then
         script_path="./install-rollout-extension.sh"
     else
@@ -653,6 +653,101 @@ uninstall_menu() {
     done
 }
 
+# --- Status Check ---
+
+check_status() {
+    echo ""
+    echo -e "${BLUE}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║          Kubernetes Infrastructure Status               ║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    local total=0
+    local installed=0
+
+    # Helper: check and report
+    check_component() {
+        local name="$1"
+        local namespace="$2"
+        local check_cmd="$3"
+        local detail_cmd="$4"
+        total=$((total + 1))
+
+        printf "  Checking %-35s" "$name..."
+        if eval "$check_cmd" &>/dev/null; then
+            installed=$((installed + 1))
+            echo -e " ${GREEN}[INSTALLED]${NC}"
+            if [ -n "$detail_cmd" ]; then
+                eval "$detail_cmd" 2>/dev/null | sed 's/^/      │ /'
+            fi
+            if [ -n "$namespace" ]; then
+                local ready=$(kubectl get pods -n "$namespace" --no-headers 2>/dev/null | grep -c "Running")
+                local total_pods=$(kubectl get pods -n "$namespace" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+                echo -e "      │ Pods: ${GREEN}$ready${NC}/$total_pods running (ns: $namespace)"
+            fi
+        else
+            echo -e " ${RED}[NOT FOUND]${NC}"
+        fi
+        echo ""
+    }
+
+    # 1. MetalLB
+    check_component "MetalLB" "metallb-system" \
+        "kubectl get deployment controller -n metallb-system" \
+        "kubectl get ipaddresspool -n metallb-system --no-headers 2>/dev/null | awk '{printf \"      │ IP Pool: %s → %s\n\", \$1, \$2}'"
+
+    # 2. NGINX Ingress
+    check_component "NGINX Ingress Controller" "ingress-nginx" \
+        "kubectl get deployment ingress-nginx-controller -n ingress-nginx" \
+        "kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='External IP: {.status.loadBalancer.ingress[0].ip}{\"\\n\"}' 2>/dev/null"
+
+    # 3. Argo Rollouts
+    check_component "Argo Rollouts" "argo-rollouts" \
+        "kubectl get deployment argo-rollouts -n argo-rollouts" \
+        "echo \"Rollouts across cluster:\"; kubectl get rollouts -A --no-headers 2>/dev/null | awk '{printf \"  %-20s %-30s %s\n\", \$1, \$2, \$3}' | head -5"
+
+    # 4. Metrics Server
+    check_component "Metrics Server" "" \
+        "kubectl get deployment metrics-server -n kube-system" \
+        "kubectl get apiservice v1beta1.metrics.k8s.io -o jsonpath='API: {.status.conditions[0].type}={.status.conditions[0].status}{\"\\n\"}' 2>/dev/null"
+
+    # 5. Local Path Provisioner
+    check_component "Local Path Provisioner" "local-path-storage" \
+        "kubectl get deployment local-path-provisioner -n local-path-storage" \
+        "kubectl get storageclass local-path -o jsonpath='StorageClass: {.metadata.name} (default={.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class}){\"\\n\"}' 2>/dev/null"
+
+    # 6. ArgoCD
+    check_component "ArgoCD" "argocd" \
+        "kubectl get deployment argocd-server -n argocd" \
+        "_pw=\$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null); [ -n \"\$_pw\" ] && echo \"Admin password: \$_pw\" || echo \"Admin password: (initial secret deleted)\"; echo \"Applications:\"; kubectl get applications -n argocd --no-headers 2>/dev/null | awk '{printf \"  %-30s Sync=%-10s Health=%s\n\", \$1, \$2, \$3}' | head -5; [ \$(kubectl get applications -n argocd --no-headers 2>/dev/null | wc -l) -eq 0 ] && echo \"  (none)\""
+
+    # 7. NFS Provisioner
+    check_component "NFS Provisioner" "" \
+        "helm list -A 2>/dev/null | grep -q nfs-subdir-external-provisioner" \
+        "kubectl get storageclass nfs-client -o jsonpath='StorageClass: {.metadata.name} (provisioner={.provisioner}){\"\\n\"}' 2>/dev/null"
+
+    # 8. Docker Registry Secret
+    local secret_ns="automated"
+    check_component "Docker Registry Secret" "" \
+        "kubectl get secret apt-docker-server -n $secret_ns" \
+        "echo \"Secret: apt-docker-server (ns: $secret_ns)\""
+
+    # 9. Argo Rollouts Extension
+    check_component "Argo Rollouts Extension" "" \
+        "kubectl get deployment argocd-server -n argocd -o jsonpath='{.spec.template.spec.initContainers[*].name}' 2>/dev/null | grep -q rollout-extension-installer" \
+        "echo \"Patched into ArgoCD server as initContainer\""
+
+    # Summary
+    echo -e "${BLUE}──────────────────────────────────────────────────────────${NC}"
+    if [ "$installed" -eq "$total" ]; then
+        echo -e "  ${GREEN}✔ All $total/$total components installed${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ $installed/$total components installed${NC}  ($(($total - $installed)) missing)"
+    fi
+    echo -e "${BLUE}──────────────────────────────────────────────────────────${NC}"
+    echo ""
+}
+
 # --- Main Menu ---
 
 show_menu() {
@@ -669,6 +764,7 @@ show_menu() {
     echo "9. Create Docker Registry Secret (Interactive)"
     echo "10. Install Argo Rollouts Extension (Requires ArgoCD)"
     echo "11. Uninstall All Components"
+    echo "12. Check Status (All Components)"
     echo "0. Exit"
     echo ""
 }
@@ -695,6 +791,7 @@ main() {
             9) create_docker_registry_secret ;;
             10) install_rollout_extension ;;
             11) uninstall_menu ;;
+            12) check_status ;;
             0)
                 log_info "Exiting..."
                 exit 0

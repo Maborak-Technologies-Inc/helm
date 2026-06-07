@@ -2,6 +2,23 @@
 
 This document describes all the Kubernetes infrastructure components installed and configured for the Amazon Watcher Stack deployment.
 
+## Directory Structure
+
+```
+kubernetes/
+  README.md                              # This file
+  bootstrap/
+    bootstrap.sh                         # Interactive cluster setup menu (installs all infra)
+    install-rollout-extension.sh         # Patches ArgoCD for Argo Rollouts UI extension
+    argocd-rollout-extension-patch.json  # JSON patch consumed by the above script
+  manifests/
+    calico-new-pool.yaml                 # Calico IPPool: switch to 172.16.0.0/16
+    calico-restore-pool.yaml             # Calico IPPool: restore default 192.168.0.0/16
+  scripts/
+    run-backend-cli.sh                   # Create ephemeral K8s Job for one-off backend CLI commands
+    run-backend-cli-helm.sh              # kubectl exec into existing CLI Rollout pod
+```
+
 ## Table of Contents
 
 1. [MetalLB - LoadBalancer Implementation](#metallb---loadbalancer-implementation)
@@ -61,12 +78,8 @@ spec:
 ### Apply Configuration
 
 ```bash
-# From the helm directory root
-kubectl apply -f kubernetes/metallb-config.yaml
-
-# Or from the kubernetes directory
-cd kubernetes
-kubectl apply -f metallb-config.yaml
+# Use the bootstrap script (option 2: Install MetalLB) which prompts for IP range
+./kubernetes/bootstrap/bootstrap.sh
 ```
 
 ### IP Address Pool
@@ -195,7 +208,7 @@ The Argo Rollouts UI plugin provides a visual interface in ArgoCD for viewing an
 
 ```bash
 # Run the installation script from the kubernetes directory
-./kubernetes/install-rollout-extension.sh
+./kubernetes/bootstrap/install-rollout-extension.sh
 ```
 
 **Method 2: Manual patch using JSON file**
@@ -211,7 +224,7 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -
 
 **Configuration Files:**
 - `kubernetes/argocd-rollout-extension-patch.json` - JSON patch for ArgoCD server deployment
-- `kubernetes/install-rollout-extension.sh` - Installation script
+- `kubernetes/bootstrap/install-rollout-extension.sh` - Installation script
 
 #### Access the Rollouts UI
 
@@ -801,7 +814,7 @@ kubectl get rollout <rollout-name> -o yaml | grep requests
 
 ### MetalLB Configuration
 
-**Location**: `kubernetes/metallb-config.yaml`
+**Note**: MetalLB configuration is generated interactively by `kubernetes/bootstrap/bootstrap.sh` (option 2). Example configuration:
 
 ```yaml
 apiVersion: metallb.io/v1beta1
@@ -840,14 +853,14 @@ Key sections:
 
 This JSON patch file contains the configuration for installing the Argo Rollouts UI extension in ArgoCD. It adds an initContainer to the ArgoCD server deployment.
 
-**Installation Script**: `kubernetes/install-rollout-extension.sh`
+**Installation Script**: `kubernetes/bootstrap/install-rollout-extension.sh`
 
 A bash script that applies the patch and verifies the installation.
 
 **Usage**:
 ```bash
 # Install using the script
-./kubernetes/install-rollout-extension.sh
+./kubernetes/bootstrap/install-rollout-extension.sh
 
 # Or apply patch manually
 kubectl patch deployment argocd-server -n argocd --type='json' -p="$(cat kubernetes/argocd-rollout-extension-patch.json)"
@@ -863,7 +876,7 @@ kubectl patch deployment argocd-server -n argocd --type='json' -p="$(cat kuberne
 # 1. MetalLB
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
 kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=90s
-kubectl apply -f kubernetes/metallb-config.yaml
+# MetalLB IP pool is configured interactively by bootstrap.sh
 
 # 2. NGINX Ingress
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
@@ -874,7 +887,7 @@ kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 
 # 3a. Argo Rollouts UI Plugin (optional but recommended)
-./kubernetes/install-rollout-extension.sh
+./kubernetes/bootstrap/install-rollout-extension.sh
 
 # 4. Metrics Server (for HPA)
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -888,7 +901,8 @@ kubectl rollout status deployment/metrics-server -n kube-system
 
 ```bash
 # MetalLB
-kubectl delete -f kubernetes/metallb-config.yaml
+kubectl delete ipaddresspool default-pool -n metallb-system
+kubectl delete l2advertisement default -n metallb-system
 kubectl delete -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
 
 # NGINX Ingress
@@ -931,10 +945,10 @@ For running one-time CLI commands in the backend (like database migrations), use
 
 ```bash
 # Run a command using the Helm template
-./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+./kubernetes/scripts/run-backend-cli-helm.sh "python manage.py migrate"
 
 # Or with custom namespace/release
-NAMESPACE=automated RELEASE_NAME=test-apt ./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
+NAMESPACE=automated RELEASE_NAME=test-apt ./kubernetes/scripts/run-backend-cli-helm.sh "python -m alembic upgrade head"
 ```
 
 **Method 2: Using Helm directly**
@@ -986,16 +1000,16 @@ The Job template uses the same helpers as the backend Rollout:
 
 ```bash
 # Database migration
-./kubernetes/run-backend-cli-helm.sh "python manage.py migrate"
+./kubernetes/scripts/run-backend-cli-helm.sh "python manage.py migrate"
 
 # Alembic migration
-./kubernetes/run-backend-cli-helm.sh "python -m alembic upgrade head"
+./kubernetes/scripts/run-backend-cli-helm.sh "python -m alembic upgrade head"
 
 # Custom Python script
-./kubernetes/run-backend-cli-helm.sh "python scripts/update_data.py"
+./kubernetes/scripts/run-backend-cli-helm.sh "python scripts/update_data.py"
 
 # Shell command
-./kubernetes/run-backend-cli-helm.sh "ls -la /app"
+./kubernetes/scripts/run-backend-cli-helm.sh "ls -la /app"
 ```
 
 ### Cleanup
