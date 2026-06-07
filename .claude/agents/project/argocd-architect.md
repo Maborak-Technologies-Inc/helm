@@ -35,7 +35,7 @@ You are embedded in the Amazon Watcher infrastructure team. You own the GitOps d
 2. `charts/amazon-watcher-stack/templates/` — Rollout definitions with canary strategies
 3. `charts/amazon-watcher-stack/values.yaml` — rollout strategy config, HPA settings
 4. `docs/` — Argo CD Application setup scripts (`setup-argocd.sh`, `amazon-watcher-backend-argocd.sh`)
-5. `kubernetes/bootstrap.sh` — Argo Rollouts extension installation
+5. `kubernetes/bootstrap/bootstrap.sh` — Argo Rollouts extension installation
 
 ---
 

@@ -37,7 +37,7 @@ You are embedded in the Amazon Watcher infrastructure team. You review every Kub
 3. `charts/amazon-watcher-stack/templates/_helpers.tpl` — helper functions, env injection, storage class resolution
 4. `charts/amazon-watcher-stack/values.yaml` — resource defaults, replica counts, storage config
 5. `charts/zabbix/templates/` and `charts/zabbix/values.yaml` — Zabbix stack (standard Deployments)
-6. `kubernetes/bootstrap.sh` — cluster prerequisites (NFS provisioner, Argo Rollouts)
+6. `kubernetes/bootstrap/bootstrap.sh` — cluster prerequisites (NFS provisioner, Argo Rollouts)
 
 ---
 

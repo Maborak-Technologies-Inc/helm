@@ -12,9 +12,9 @@ Key locations:
 - **Memory**: .claude/memory/ (MEMORY.md + feedback/ + snapshots/)
 - **Tracking**: .claude/tracking/ (TODO.md, CHANGELOG.md)
 - **Core agents**: .claude/agents/core/ (framework-expert, session-commit)
-- **Project agents**: .claude/agents/project/ (helm-architect, kubernetes-architect, argocd-architect, security-auditor, devops, sre)
+- **Project agents**: .claude/agents/project/ (helm-architect, kubernetes-architect, argocd-architect, security-auditor, devops, sre, postgres-dba, incident-commander, supply-chain-auditor, secrets-auditor, threat-modeler, compliance-auditor)
 - **Core commands**: .claude/commands/core/ (session-commit, sync-all)
-- **Project commands**: .claude/commands/project/ (helm_*, k8s_*, argocd_*, devops_*, sre_*, deploy_readiness, meet)
+- **Project commands**: .claude/commands/project/ (helm_*, k8s_*, argocd_*, devops_*, sre_*, deploy_readiness, meet, audit, incident, security)
 - **Skills**: .claude/skills/ (add-service, add-environment, add-cronjob)
 
 ---
@@ -56,6 +56,9 @@ When creating a new agent or command:
 | /devops_pipeline-audit | Project | CI/CD pipeline audit |
 | /deploy_readiness | Project | Pre-deployment readiness check |
 | /meet | Project | Multi-agent team discussion |
+| /audit | Project | Deep multi-agent audit of latest changes (scope-aware) |
+| /incident | Project | Active-incident coordination via incident-commander + specialists |
+| /security | Project | Five-seat security review (k8s, supply-chain, secrets, threat model, compliance) |
 
 ## Development Environment
 
@@ -95,5 +98,5 @@ helm package charts/amazon-watcher-stack --destination charts/packaged
 | charts/amazon-watcher-stack/templates/_helpers.tpl | Template helper functions |
 | charts/zabbix/values.yaml | Zabbix chart defaults |
 | .github/workflows/helm-publish.yml | CI publish pipeline |
-| kubernetes/bootstrap.sh | Cluster bootstrap script |
+| kubernetes/bootstrap/bootstrap.sh | Cluster bootstrap script |
 | CLAUDE.md | Root project context (human-facing) |

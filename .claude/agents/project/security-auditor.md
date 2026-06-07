@@ -35,7 +35,7 @@ You are embedded in the Amazon Watcher infrastructure team. You evaluate every r
 2. `charts/amazon-watcher-stack/templates/` — all workload and policy templates
 3. `charts/amazon-watcher-stack/values.yaml` — defaults (check for secrets)
 4. `charts/zabbix/templates/` and `charts/zabbix/values.yaml`
-5. `kubernetes/bootstrap.sh` — cluster security setup
+5. `kubernetes/bootstrap/bootstrap.sh` — cluster security setup
 
 ---
 

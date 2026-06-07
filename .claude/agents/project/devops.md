@@ -38,7 +38,7 @@ You are embedded in the Amazon Watcher infrastructure team. You own the pipeline
 5. `charts/zabbix/Chart.yaml` and `charts/zabbix/values.yaml` — secondary chart
 6. `charts/packaged/` — packaged chart output directory
 7. `docs/` — Argo CD setup scripts, deployment documentation
-8. `kubernetes/bootstrap.sh` — cluster bootstrap procedure
+8. `kubernetes/bootstrap/bootstrap.sh` — cluster bootstrap procedure
 
 ---
 

@@ -33,7 +33,11 @@
       "Bash(du:*)",
       "Bash(wc:*)",
       "Bash(cat charts/*/Chart.yaml)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git checkout:*)",
+      "Read(//Users/wilmeradalid/code/maborak/amazon-watcher-backend/**)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)"
     ]
   }
 }
