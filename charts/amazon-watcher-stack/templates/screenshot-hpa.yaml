@@ -1,4 +1,8 @@
-{{- if and .Values.screenshot.enabled .Values.screenshot.autoscaling.enabled }}
+{{- $hpaEnabled := .Values.screenshot.autoscaling.enabled }}
+{{- if ne (printf "%v" .Values.global.hpa) "" }}
+  {{- $hpaEnabled = .Values.global.hpa }}
+{{- end }}
+{{- if and .Values.screenshot.enabled $hpaEnabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

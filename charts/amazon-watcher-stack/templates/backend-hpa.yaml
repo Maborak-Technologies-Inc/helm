@@ -1,4 +1,8 @@
-{{- if and .Values.backend.enabled .Values.backend.autoscaling.enabled }}
+{{- $hpaEnabled := .Values.backend.autoscaling.enabled }}
+{{- if ne (printf "%v" .Values.global.hpa) "" }}
+  {{- $hpaEnabled = .Values.global.hpa }}
+{{- end }}
+{{- if and .Values.backend.enabled $hpaEnabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

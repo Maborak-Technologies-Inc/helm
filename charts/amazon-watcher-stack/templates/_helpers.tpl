@@ -45,21 +45,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if .Values.argocd.tags }}
-{{- range $key, $value := .Values.argocd.tags }}
-{{- if $value }}
-{{- if eq $key "environment" }}
-app.maborak.com/environment: {{ $value | quote }}
-{{- else if eq $key "team" }}
-app.maborak.com/team: {{ $value | quote }}
-{{- else if eq $key "project" }}
-app.maborak.com/project: {{ $value | quote }}
-{{- else }}
-{{ $key }}: {{ $value | quote }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
 {{- end }}
 
 {{/*
@@ -131,6 +116,31 @@ Note: Password will be injected via environment variable reference
 {{- end }}
 
 {{/*
+Service name for redis
+*/}}
+{{- define "amazon-watcher-stack.redis.serviceName" -}}
+{{- printf "%s-redis" (include "amazon-watcher-stack.fullname" .) }}
+{{- end }}
+
+{{/*
+Redis image
+*/}}
+{{- define "amazon-watcher-stack.redis.image" -}}
+{{- printf "redis:%s" (.Values.redis.version | default "7-alpine") }}
+{{- end }}
+
+{{/*
+Redis connection URL
+Note: Password will be injected via environment variable reference
+*/}}
+{{- define "amazon-watcher-stack.redis.url" -}}
+{{- $redisHost := include "amazon-watcher-stack.redis.serviceName" . }}
+{{- $redisPort := .Values.redis.port | default 6379 | int }}
+{{- $redisDb := .Values.redis.db | default 0 | int }}
+{{- printf "redis://:$(REDIS_PASSWORD)@%s:%d/%d" $redisHost $redisPort $redisDb }}
+{{- end }}
+
+{{/*
 Backend image
 */}}
 {{- define "amazon-watcher-stack.backend.image" -}}
@@ -166,12 +176,68 @@ Database image
 {{- end }}
 
 {{/*
+Backend computed environment variables (secrets + auto-generated URLs).
+Shared across: backend-rollout, backend-cli-rollout, backend-cronjob, maborak-deployment.
+Any change here applies to all four workloads.
+*/}}
+{{- define "amazon-watcher-stack.backend.computedEnv" -}}
+- name: PYTHONPATH
+  value: "/app"
+{{- if .Values.database.enabled }}
+- name: POSTGRES_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "amazon-watcher-stack.fullname" . }}-db-secret
+      key: postgres-password
+{{- end }}
+{{- if .Values.redis.enabled }}
+- name: REDIS_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "amazon-watcher-stack.fullname" . }}-redis-secret
+      key: redis-password
+{{- end }}
+- name: APT_BACKEND_JWT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "amazon-watcher-stack.fullname" . }}-backend-secret
+      key: jwt-secret
+- name: APT_BACKEND_DATABASE_URL
+  value: {{ .Values.backend.env.APT_BACKEND_DATABASE_URL | default (include "amazon-watcher-stack.db.url" .) | quote }}
+{{- if or .Values.redis.enabled .Values.backend.env.APT_BACKEND_REDIS_URL }}
+- name: APT_BACKEND_REDIS_URL
+  value: {{ .Values.backend.env.APT_BACKEND_REDIS_URL | default (include "amazon-watcher-stack.redis.url" .) | quote }}
+{{- end }}
+- name: APT_BACKEND_SCREENSHOT_SERVICE_URL
+  value: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_SERVICE_URL | default (printf "http://%s.%s.svc.cluster.local:%d/amazon/" (include "amazon-watcher-stack.screenshot.serviceName" .) (.Release.Namespace | default "default") (.Values.screenshot.env.APT_BROWSER_PORT | default "3000" | int)) | quote }}
+- name: DOMAIN_UI
+{{- if .Values.backend.env.DOMAIN_UI }}
+  value: {{ .Values.backend.env.DOMAIN_UI | quote }}
+{{- else if .Values.global.domain.ui }}
+  value: {{ printf "http://%s" .Values.global.domain.ui | quote }}
+{{- else }}
+  value: ""
+{{- end }}
+{{- include "amazon-watcher-stack.backend.env" . }}
+{{- end }}
+
+{{/*
+Database validation - fails if database is disabled without an external URL.
+Call at the top of any template that needs database access.
+*/}}
+{{- define "amazon-watcher-stack.backend.validateDatabase" -}}
+{{- if and (not .Values.database.enabled) (not .Values.backend.env.APT_BACKEND_DATABASE_URL) }}
+{{- fail "ERROR: database.enabled=false but APT_BACKEND_DATABASE_URL is empty. You must provide an external database URL when the internal database is disabled." }}
+{{- end }}
+{{- end }}
+
+{{/*
 Backend environment variables - iterate over env map (prefixes already included)
-Skips empty values and special computed vars (APT_BACKEND_DATABASE_URL, APT_BACKEND_SCREENSHOT_SERVICE_URL, DOMAIN_UI)
+Skips empty values and special computed vars (APT_BACKEND_DATABASE_URL, APT_BACKEND_SCREENSHOT_SERVICE_URL, APT_BACKEND_REDIS_URL, DOMAIN_UI)
 */}}
 {{- define "amazon-watcher-stack.backend.env" -}}
 {{- range $key, $value := .Values.backend.env }}
-{{- if and $value (ne $key "APT_BACKEND_DATABASE_URL") (ne $key "APT_BACKEND_SCREENSHOT_SERVICE_URL") (ne $key "DOMAIN_UI") }}
+{{- if and $value (ne $key "APT_BACKEND_DATABASE_URL") (ne $key "APT_BACKEND_SCREENSHOT_SERVICE_URL") (ne $key "APT_BACKEND_REDIS_URL") (ne $key "DOMAIN_UI") }}
 - name: {{ $key }}
   value: {{ $value | quote }}
 {{- end }}

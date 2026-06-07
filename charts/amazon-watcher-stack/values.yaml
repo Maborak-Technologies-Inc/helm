@@ -68,6 +68,44 @@ database:
     # ingress: []  # Custom ingress rules (if not provided, defaults are used)
     # egress: []  # Custom egress rules (if not provided, defaults are used)
 
+# Redis Configuration
+redis:
+  enabled: true
+  version: "7-alpine"
+  password: "amazon_watcher_redis_password"
+  port: 6379
+  db: 0
+  storage:
+    storageClassName: "" # Own value, not shared with global storage
+    size: 2Gi
+    accessModes:
+      - ReadWriteOnce
+  pvcRetentionPolicy:
+    whenDeleted: Delete  # Options: Retain (default), Delete
+    whenScaled: Retain   # Options: Retain (default), Delete
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      # No CPU limit — CFS throttling harms single-threaded Redis
+  config:
+    maxmemory: "384mb"              # Below container limit, room for AOF rewrite buffers
+    maxmemory-policy: "noeviction"  # Queue data: backpressure, not silent eviction
+    appendonly: "yes"
+    appendfsync: "everysec"
+  healthCheck:
+    enabled: true
+    intervalSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 5
+    initialDelaySeconds: 5
+  # Network Policy configuration
+  networkPolicy:
+    enabled: true # Set to true to enable NetworkPolicy
+    # ingress: []  # Custom ingress rules (if not provided, defaults are used)
+
 # Backend Service Configuration
 backend:
   enabled: true
@@ -133,14 +171,6 @@ backend:
       requests:
         memory: 256Mi
         cpu: 100m
-    # Note: CronJob does not support autoscaling (HPA)
-    # CronJob creates Jobs on schedule - each Job runs pods to completion
-    # For autoscaling, use Rollout/Deployment instead
-    # Pod Disruption Budget configuration
-    podDisruptionBudget:
-      enabled: true # Set to true to enable PDB
-      # minAvailable: 2  # Minimum number of pods that must be available (mutually exclusive with maxUnavailable)
-      maxUnavailable: 1 # Maximum number of pods that can be unavailable
   image:
     repository: maborak/platform
     tag: "apt-backend-0.2.1"
@@ -171,47 +201,60 @@ backend:
       periodSeconds: 20
       timeoutSeconds: 10
       failureThreshold: 5
-    # Legacy flat structure support (optional, can be removed if strict structure is preferred)
-    initialDelaySeconds: 40
-    periodSeconds: 30
-    timeoutSeconds: 10
-    failureThreshold: 3
   # Backend environment variables (APT_BACKEND_* prefix)
   # All env vars with full names including prefix - no transformation needed
+  #
+  # DATABASE_URL: Leave empty to auto-generate from the in-chart PostgreSQL service.
+  # The helper constructs: postgresql://<user>:$(POSTGRES_PASSWORD)@<db-service>:<port>/<db>
+  # Set explicitly only when using an external database (e.g., PgBouncer, RDS).
   env:
-    APT_BACKEND_DATABASE_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6432/postgres" # External database URL
-    APT_BACKEND_DB_USE_REPLICA_ENGINE: "true"
-    APT_BACKEND_DB_READ_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6433/postgres" # Read replica database URL (optional, for read-only queries)
-    APT_BACKEND_DB_WRITE_URL: "postgresql://postgres:Dgo7cQ41WDTnd89G46TgfVtr@10.10.10.189:6432/postgres" # Write database URL (optional, for write operations)
+    APT_BACKEND_DATABASE_URL: "" # Auto-populated from in-chart DB when empty
+    APT_BACKEND_DB_USE_REPLICA_ENGINE: "false" # No read replicas with in-chart single-instance DB
+    APT_BACKEND_DB_READ_URL: "" # Not needed with single-instance DB
+    APT_BACKEND_DB_WRITE_URL: "" # Not needed with single-instance DB
     APT_BACKEND_DB_ECHO: "false"
     APT_BACKEND_DB_ECHO_POOL: "false"
     APT_BACKEND_DB_POOL_SIZE: "20"
     APT_BACKEND_DB_MAX_OVERFLOW: "30"
     APT_BACKEND_DB_POOL_TIMEOUT: "30"
     APT_BACKEND_DB_POOL_RECYCLE: "3600"
-
-    APT_BACKEND_DB_READ_POOL_SIZE: "10" # Read replica connection pool size
-    APT_BACKEND_DB_WRITE_POOL_SIZE: "20" # Write database connection pool size
+    APT_BACKEND_DB_READ_POOL_SIZE: "10"
+    APT_BACKEND_DB_WRITE_POOL_SIZE: "20"
     APT_BACKEND_UVI_HOST: "0.0.0.0"
     APT_BACKEND_UVI_PORT: "9000"
     APT_BACKEND_RELOAD: "false"
     APT_BACKEND_LOG_LEVEL: "info"
+    APT_BACKEND_LOG_FORMAT: "text" # Options: "text", "json"
+    APT_BACKEND_LOG_OUTPUT: "stdout" # Options: "stdout", "file"
+    APT_BACKEND_LOG_EXCLUDED_PATHS: "/health,/monitoring/status"
     APT_BACKEND_CLI_LOG_LEVEL: "info"
     APT_BACKEND_DEBUG_MODE: "false"
+    APT_BACKEND_ENABLE_DOCS: "true" # Enable/disable API docs (/docs, /redoc)
     APT_BACKEND_UVI_ACCESS_LOG: "true"
     APT_BACKEND_UVI_WORKERS: "5"
     APT_BACKEND_UVI_LIMIT_CONCURRENCY: "100"
     APT_BACKEND_UVI_LIMIT_MAX_REQUESTS: "1000"
     APT_BACKEND_UVI_TIMEOUT_KEEP_ALIVE: "30"
     APT_BACKEND_UVI_TIMEOUT_GRACEFUL_SHUTDOWN: "30"
+    # JWT Configuration
     APT_BACKEND_JWT_ALGORITHM: "HS256"
+    APT_BACKEND_JWT_SECRET: "" # REQUIRED: Set a strong secret key for JWT signing
     APT_BACKEND_JWT_ACCESS_TOKEN_EXPIRY: "3600"
     APT_BACKEND_JWT_REFRESH_TOKEN_EXPIRY: "2592000"
+    # Account Lockout
+    APT_BACKEND_ACCOUNT_LOCKOUT_THRESHOLD: "5" # Failed attempts before lockout
+    APT_BACKEND_ACCOUNT_LOCKOUT_DURATION: "900" # Lockout duration in seconds (15 min)
     # CAPTCHA Configuration
     APT_BACKEND_CAPTCHA_TYPE: "turnstile" # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
     APT_BACKEND_RECAPTCHA_V3_SECRET_KEY: "6Lejc1csAAAAAI-_ifGaGOLIK8jyk3Mv78-i3wtp" # Google reCAPTCHA v3 secret key
     APT_BACKEND_TURNSTILE_SECRET_KEY: "0x4AAAAAACSywaSu-nfefLxLT2pQJxV5vf0" # Cloudflare Turnstile secret key
     APT_BACKEND_RECAPTCHA_V3_THRESHOLD: "0.5" # reCAPTCHA v3 score threshold (0.0 to 1.0)
+    # OAuth Providers
+    APT_BACKEND_GOOGLE_CLIENT_ID: "" # Google OAuth2 client ID
+    APT_BACKEND_GITHUB_CLIENT_ID: "" # GitHub OAuth2 client ID
+    APT_BACKEND_GITHUB_CLIENT_SECRET: "" # GitHub OAuth2 client secret
+    APT_BACKEND_FACEBOOK_APP_ID: "" # Facebook OAuth2 app ID
+    APT_BACKEND_FACEBOOK_APP_SECRET: "" # Facebook OAuth2 app secret
     # Domain Configuration
     DOMAIN_UI: "" # UI domain for email links (verification, password reset, etc.) - Auto-generated from global.domain.ui if empty
     APT_BACKEND_CORS_ORIGINS: "*"
@@ -220,34 +263,50 @@ backend:
     APT_BACKEND_CORS_ALLOW_HEADERS: "*"
     APT_BACKEND_CORS_EXPOSE_HEADERS: ""
     APT_BACKEND_CORS_MAX_AGE: "600"
+    # Rate Limiting
     APT_BACKEND_RATE_LIMIT_ENABLED: "true"
-    APT_BACKEND_RATE_LIMIT_REQUESTS: "20"
+    APT_BACKEND_RATE_LIMIT_REQUESTS: "500"
     APT_BACKEND_RATE_LIMIT_WINDOW: "60"
     APT_BACKEND_RATE_LIMIT_BYPASS_KEY: ""
     APT_BACKEND_RATE_LIMIT_EXCLUDED_PATHS: "/docs,/redoc,/openapi.json,/favicon.ico,/health"
     APT_BACKEND_RATE_LIMIT_BYPASS_PATHS: ""
+    APT_BACKEND_RATE_LIMIT_PRODUCTS_ADD_MAX_REQUESTS: "50"
+    # Progressive Rate Limits (PRL) - format: attempts,window pattern
+    APT_BACKEND_PRL_LOGIN: "0,0,0,5,15,30,C,C60,C60"
+    APT_BACKEND_PRL_CONFIRM_LINK: "0,0,0,5,C,C5,C10,C60,C60"
+    APT_BACKEND_PRL_RESEND_VERIFICATION: "0,0,0,5,15,30,C,C60,C60"
     # Rate limiting for authentication endpoints
-    APT_BACKEND_RATE_LIMIT_AUTH_LOGIN_MAX_REQUESTS: "200"
+    APT_BACKEND_RATE_LIMIT_AUTH_LOGIN_MAX_REQUESTS: "10"
     APT_BACKEND_RATE_LIMIT_AUTH_LOGIN_WINDOW: "60"
-    APT_BACKEND_RATE_LIMIT_AUTH_REGISTER_MAX_REQUESTS: "200"
+    APT_BACKEND_RATE_LIMIT_AUTH_REGISTER_MAX_REQUESTS: "5"
     APT_BACKEND_RATE_LIMIT_AUTH_REGISTER_WINDOW: "60"
-    APT_BACKEND_RATE_LIMIT_AUTH_VERIFY_MAX_REQUESTS: "500"
+    APT_BACKEND_RATE_LIMIT_AUTH_VERIFY_MAX_REQUESTS: "5"
     APT_BACKEND_RATE_LIMIT_AUTH_VERIFY_WINDOW: "3600"
-    APT_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_MAX_REQUESTS: "500"
+    APT_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_MAX_REQUESTS: "5"
     APT_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_WINDOW: "300"
-    APT_BACKEND_RATE_LIMIT_AUTH_REFRESH_MAX_REQUESTS: "400"
+    APT_BACKEND_RATE_LIMIT_AUTH_REFRESH_MAX_REQUESTS: "40"
     APT_BACKEND_RATE_LIMIT_AUTH_REFRESH_WINDOW: "60"
     APT_BACKEND_MONITOR_ENABLED: "true"
     APT_BACKEND_MONITOR_INTERVAL: "3600"
     APT_BACKEND_MONITOR_BATCH_SIZE: "5"
-    APT_BACKEND_PRICE_HISTORY_PERIODIC_SECONDS: "60"
+    APT_BACKEND_MONITOR_STRATEGY: "balanced" # Options: "balanced", "fifo", "lifo"
+    APT_BACKEND_PRICE_HISTORY_PERIODIC_SECONDS: "30"
     APT_BACKEND_WORKER_TIMEOUT: "300"
     APT_BACKEND_DEFAULT_COUNTRY: "US"
     APT_BACKEND_HTTP_ENGINE: "requests"
     APT_BACKEND_HTTP_TIMEOUT: "10.0"
     APT_BACKEND_HTTP_RETRIES: "1"
     APT_BACKEND_HTTP_MAX_CONNECTIONS: "10"
-    APT_BACKEND_USER_AGENT: "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.6613.18 Safari/537.36"
+    APT_BACKEND_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+    # Queue
+    APT_BACKEND_QUEUE_KEY: "pito"
+    # Tracking
+    APT_BACKEND_TRACKED_PRIORITY_BONUS: "3600"
+    # Application limits
+    APT_BACKEND_LIMIT_MAX_PRICE_ALERTS_CONFIRMED: "5"
+    APT_BACKEND_LIMIT_MAX_RECIPIENTS_CONFIRMED: "5"
+    APT_BACKEND_LIMIT_MAX_TRIGGERS_PER_ALERT: "5"
+    APT_BACKEND_LIMIT_MIN_NOTIFICATION_FREQUENCY_MINUTES: "1"
     # API limits and pagination
     APT_BACKEND_API_PAGE_SIZE_DEFAULT: "10"
     APT_BACKEND_API_PAGE_SIZE_MAX: "100"
@@ -273,7 +332,9 @@ backend:
     APT_BACKEND_TABLE_USER_TOKENS: "user_tokens"
     APT_BACKEND_TABLE_USER_PERMISSIONS: "user_permissions"
     APT_BACKEND_TABLE_PRODUCT_PROCESSING_LOGS: "product_processing_logs"
+    # Screenshot Configuration
     APT_BACKEND_SCREENSHOT_ENABLED: "true"
+    APT_BACKEND_SCREENSHOT_TRIGGER: "on-change" # Options: "always", "on-change", "on-price-change"
     APT_BACKEND_SCREENSHOT_ON_PRICE_CHANGE_ONLY: "false"
     APT_BACKEND_SCREENSHOT_ON_CHANGES: "false"
     APT_BACKEND_SCREENSHOT_ALWAYS: "true"
@@ -283,13 +344,26 @@ backend:
     APT_BACKEND_SCREENSHOT_SERVICE_WIDTH: "1200"
     APT_BACKEND_SCREENSHOT_SERVICE_HEIGHT: "960"
     APT_BACKEND_SCREENSHOT_SERVICE_FULL_PAGE: "false"
-    APT_BACKEND_SCREENSHOT_SERVICE_JAVASCRIPT_ENABLED: "false"
+    APT_BACKEND_SCREENSHOT_SERVICE_JAVASCRIPT_ENABLED: "true"
     APT_BACKEND_SCREENSHOT_SERVICE_STOP_ON_CAPTCHA: "false"
-    APT_BACKEND_SCREENSHOT_SERVICE_BROWSER_TYPE: "chromium"
+    APT_BACKEND_SCREENSHOT_SERVICE_BROWSER_TYPE: "firefox"
+    # HTML scraping storage
+    APT_BACKEND_SAVE_SCRAPPED_HTML: "true"
+    APT_BACKEND_HTML_MODE: "raw" # Options: "raw", "parsed"
+    APT_BACKEND_HTML_STORAGE_PATH: "/var/screenshots/html"
+    # Upload paths
+    APT_BACKEND_LIVECHAT_UPLOAD_STORAGE_PATH: "/var/screenshots/uploads/livechat"
+    APT_BACKEND_TICKET_UPLOAD_STORAGE_PATH: "/var/screenshots/uploads/tickets"
     APT_BACKEND_BENCH_KEY: "sdhdfkjhsdhfkshdfjhsd"
     APT_BACKEND_TEST_MODE: "false"
     # Cookie lifetime threshold (for --orphans flag)
     APT_BACKEND_COOKIE_LIFETIME: "3600"
+    # Payment providers
+    APT_BACKEND_STRIPE_PUBLISHABLE_KEY: "" # Stripe publishable key
+    APT_BACKEND_STRIPE_SECRET_KEY: "" # Stripe secret key
+    APT_BACKEND_PAYPAL_CLIENT_ID: "" # PayPal client ID
+    APT_BACKEND_PAYPAL_SECRET: "" # PayPal secret
+    APT_BACKEND_PAYPAL_MODE: "sandbox" # Options: "sandbox", "live"
     # Hook Handlers Configuration
     APT_BACKEND_HOOKS_USE_DB_CONFIG: "false" # Use database config for hook handlers
     APT_BACKEND_HOOK_LOG_ENABLED: "true" # Enable log handler
@@ -305,7 +379,7 @@ backend:
     APT_BACKEND_HOOK_EMAIL_SMTP_SECURITY: "plain" # SMTP security: "ssl", "starttls", or "plain"
     APT_BACKEND_HOOK_EMAIL_SMTP_VERIFY_SSL: "false" # Verify SSL certificate
     APT_BACKEND_HOOK_EMAIL_CONTENT_ENCODING: "quoted-printable" # Content encoding: "quoted-printable", "base64", or "7bit"
-    APT_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "infra-aws" # Email template set name (e.g., "default", "minimal", "corporate")
+    APT_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "default" # Email template set name (e.g., "default", "minimal", "corporate")
     APT_BACKEND_HOOK_EMAIL_TEMPLATES_DIR: "" # Custom templates directory path (empty for default)
     APT_BACKEND_HOOK_EMAIL_NOTIFY_NEW: "true" # Notify on new products
     APT_BACKEND_HOOK_EMAIL_NOTIFY_CHANGED: "true" # Notify on changed products
@@ -321,10 +395,8 @@ backend:
     APT_BACKEND_HOOK_EMAIL_NOTIFY_PASSWORD_RESET: "true" # Send password reset emails
     APT_BACKEND_HOOK_EMAIL_PASSWORD_RESET_PATH: "/account/reset-password" # Password reset link path (appended to DOMAIN_UI)
     APT_BACKEND_DATA_SOURCE: "scraping"
-  # Screenshot storage volume (deprecated - use global.storage instead)
-  # This section is kept for backward compatibility but is ignored if global.storage.enabled is true
-  screenshotStorage:
-    enabled: false # Deprecated: use global.storage instead
+    # Redis
+    APT_BACKEND_REDIS_URL: "redis://amazon-watcher-redis:6379/0" # K8s Redis service URL
   # Pod Disruption Budget configuration
   podDisruptionBudget:
     enabled: false # Set to true to enable PDB
@@ -457,20 +529,38 @@ ui:
     VITE_API_TIMEOUT: "30"
     VITE_API_CACHE_TTL: "10000"
     VITE_CONNECTIVITY_CHECK_INTERVAL: "60"
-    VITE_APP_NAME: "Amazon Watcher"
+    VITE_APP_NAME: "ASIN Watcher"
     VITE_APP_VERSION: "1.0.0"
+    VITE_APP_DOMAIN: "asinwatcher.com"
+    VITE_APP_LEGAL_ENTITY: "ASIN Watcher"
+    VITE_APP_MODE: "full" # Options: "full", "limited"
     VITE_LOADER_TYPE: "shimmer" # Options: simple, progress_bar, skeleton, shimmer
     VITE_BUILD_DATE: ""
     VITE_DEFAULT_COUNTRY: "ALL"
     VITE_DEFAULT_COUNTRY_DATA: "US"
     VITE_PRICE_HISTORY_LIMIT: "50"
     VITE_PRICE_HISTORY_PAGE_SIZE: "10"
-    VITE_DEBUG_MODE: "true"
+    VITE_PAGE_SIZE_DEFAULT: "20"
+    VITE_PAGE_SIZE_OPTIONS: "10,20,50"
+    VITE_RECENT_CHANGES_LIMIT: "7"
+    VITE_DEBUG_MODE: "false"
     VITE_LOG_LEVEL: "info"
+    VITE_SUPPORT_EMAIL: "support@asinwatcher.com"
+    # Route prefixes
+    VITE_USER_ROUTE_PREFIX: "account"
+    VITE_ADMIN_ROUTE_PREFIX: "x7k2m9" # Security: obfuscated admin route
+    # Country demo messages (shown in UI)
+    VITE_COUNTRY_US_MESSAGES: '["Price: $89.99","Shipping: Free","Import fee: $0","Total: $89.99","Best price!"]'
+    VITE_COUNTRY_DE_MESSAGES: '["Price: €82.50","Shipping: €4.99","Import fee: $12.40","Total: €99.89","Was €109 last week"]'
+    VITE_COUNTRY_JP_MESSAGES: '["Price: ¥9,800","Shipping: ¥2,100","Total: ~$79.30","Price dropped -15%!","Cheapest option!"]'
     # CAPTCHA Configuration
     VITE_CAPTCHA_PROVIDER: "turnstile" # Options: "none" (disabled), "recaptcha_v3" (Google), "turnstile" (Cloudflare)
     VITE_RECAPTCHA_SITE_KEY: "6Lejc1csAAAAAMcSkjVoAD4xGm1Nm6aIwhy1AUrL" # Google reCAPTCHA v3 site key (public key)
     VITE_TURNSTILE_SITE_KEY: "0x4AAAAAACSywe2vgnS_c_an" # Cloudflare Turnstile site key (public key)
+    # OAuth Providers (public keys only)
+    VITE_GOOGLE_CLIENT_ID: "" # Google OAuth2 client ID
+    VITE_GITHUB_CLIENT_ID: "" # GitHub OAuth2 client ID
+    VITE_FACEBOOK_APP_ID: "" # Facebook OAuth2 app ID
   # Pod Disruption Budget configuration
   podDisruptionBudget:
     enabled: false # Set to true to enable PDB
@@ -737,6 +827,8 @@ ingress:
 secrets:
   # Database password (if not using database.postgres.password)
   databasePassword: ""
+  # Redis password (if not using redis.password)
+  redisPassword: ""
   # JWT secret for backend
   jwtSecret: ""
 
@@ -825,8 +917,3 @@ argocd:
     # platform.maborak.com/network-policies-version: ""
     # platform.maborak.com/istio-telemetry-api-flag: ""
 
-  # Legacy tags (deprecated - use labels instead, but kept for backward compatibility)
-  tags:
-    environment: "Development" # Maps to app.maborak.com/environment
-    team: "Platform" # Maps to app.maborak.com/team
-    project: "amazon-watcher-stack" # Maps to app.maborak.com/project
