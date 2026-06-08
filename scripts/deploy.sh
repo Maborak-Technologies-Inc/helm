@@ -82,9 +82,16 @@ set_chart_defaults() {
             DEFAULT_CHART_PATH="charts/zabbix"
             ZABBIX_UI_PORT=8081
             ;;
+        tiktok-analytics)
+            DEFAULT_NAMESPACE="tiktok"
+            DEFAULT_APP_NAME="tiktok-prod"
+            DEFAULT_PROJECT_NAME="tiktok-analytics"
+            DEFAULT_CHART_PATH="charts/tiktok-analytics-stack"
+            API_PORT=9020
+            ;;
         *)
             print_error "Unknown chart: ${CHART}"
-            print_info "Available charts: amazon-watcher, zabbix"
+            print_info "Available charts: amazon-watcher, zabbix, tiktok-analytics"
             exit 1
             ;;
     esac
@@ -290,12 +297,95 @@ safe_sync_app() {
 }
 
 # =============================================================================
+# Interactive Confirmation and Dependency Checking
+# =============================================================================
+
+confirm_action() {
+    local prompt_msg="$1"
+    local default_choice="${2:-y}"
+    local choice
+    
+    if [ "$default_choice" = "y" ] || [ "$default_choice" = "Y" ]; then
+        prompt_msg="${prompt_msg} [Y/n]: "
+    else
+        prompt_msg="${prompt_msg} [y/N]: "
+    fi
+    
+    # If stdin is not a TTY (non-interactive), assume default choice
+    if [ ! -t 0 ]; then
+        print_info "Non-interactive environment, using default choice '$default_choice'"
+        if [ "$default_choice" = "y" ] || [ "$default_choice" = "Y" ]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    # Read user input
+    echo -ne "${YELLOW}${prompt_msg}${NC}"
+    read choice
+    choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+    
+    if [ -z "$choice" ]; then
+        choice=$(echo "$default_choice" | tr '[:upper:]' '[:lower:]')
+    fi
+    
+    if [ "$choice" = "y" ] || [ "$choice" = "yes" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+ensure_image_pull_secret() {
+    local secret_name="apt-docker-server"
+    if kubectl get secret ${secret_name} -n ${NAMESPACE} &>/dev/null; then
+        print_info "Image pull secret '${secret_name}' already exists in namespace '${NAMESPACE}'"
+    else
+        print_warn "Image pull secret '${secret_name}' is missing in namespace '${NAMESPACE}'"
+        if kubectl get secret ${secret_name} -n automated &>/dev/null; then
+            if confirm_action "Do you want to copy the image pull secret '${secret_name}' from the 'automated' namespace?" "y"; then
+                print_info "Copying secret '${secret_name}' from 'automated' to '${NAMESPACE}'..."
+                kubectl get secret ${secret_name} -n automated -o json | \
+                    jq 'del(.metadata.namespace, .metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.selfLink)' | \
+                    kubectl apply -n ${NAMESPACE} -f - || {
+                        print_error "Failed to copy secret '${secret_name}'"
+                        exit 1
+                    }
+                print_info "Successfully copied secret '${secret_name}'"
+            else
+                print_warn "Skipped copying image pull secret. Pods may fail to pull images."
+            fi
+        else
+            print_warn "Could not find image pull secret '${secret_name}' in namespace 'automated' to copy."
+        fi
+    fi
+}
+
+# =============================================================================
 # Common install flow
 # =============================================================================
 
 create_namespace() {
-    print_info "Creating namespace '${NAMESPACE}'..."
-    kubectl create namespace ${NAMESPACE} 2>/dev/null || print_warn "Namespace '${NAMESPACE}' already exists"
+    if kubectl get namespace ${NAMESPACE} &>/dev/null; then
+        print_info "Namespace '${NAMESPACE}' already exists"
+    else
+        if confirm_action "Kubernetes namespace '${NAMESPACE}' does not exist. Do you want to create it?" "y"; then
+            print_info "Creating namespace '${NAMESPACE}'..."
+            kubectl create namespace ${NAMESPACE} || {
+                print_error "Failed to create namespace '${NAMESPACE}'"
+                exit 1
+            }
+        else
+            print_error "Namespace '${NAMESPACE}' is required for installation. Aborting."
+            exit 1
+        fi
+    fi
+    
+    # Check image pull secret requirements
+    if [ "$CHART" = "amazon-watcher" ] || [ "$CHART" = "tiktok-analytics" ]; then
+        ensure_image_pull_secret
+    fi
 }
 
 setup_argocd_project() {
@@ -304,23 +394,34 @@ setup_argocd_project() {
     print_info "Verifying ArgoCD project '${PROJECT_NAME}'..."
     if argocd proj get ${PROJECT_NAME} &> /dev/null; then
         if [ "$FORCE" = true ]; then
-            print_warn "Project '${PROJECT_NAME}' already exists. Deleting (--force enabled)..."
-            argocd proj delete ${PROJECT_NAME} --yes || {
-                print_error "Failed to delete existing project"
-                exit 1
-            }
-            print_info "Creating project '${PROJECT_NAME}'..."
+            if confirm_action "Project '${PROJECT_NAME}' already exists. Recreate it (--force enabled)?" "y"; then
+                print_warn "Deleting project '${PROJECT_NAME}'..."
+                argocd proj delete ${PROJECT_NAME} --yes || {
+                    print_error "Failed to delete existing project"
+                    exit 1
+                }
+                print_info "Creating project '${PROJECT_NAME}'..."
+                argocd proj create ${PROJECT_NAME} --description "${project_description}" || {
+                    print_error "Failed to create project"
+                    exit 1
+                }
+            else
+                print_info "Keeping existing project '${PROJECT_NAME}'"
+            fi
+        else
+            print_warn "Project '${PROJECT_NAME}' already exists (skipping creation)"
+        fi
+    else
+        if confirm_action "ArgoCD project '${PROJECT_NAME}' does not exist. Do you want to create it?" "y"; then
+            print_info "Creating ArgoCD project '${PROJECT_NAME}'..."
             argocd proj create ${PROJECT_NAME} --description "${project_description}" || {
                 print_error "Failed to create project"
                 exit 1
             }
         else
-            print_warn "Project '${PROJECT_NAME}' already exists"
-            print_info "Skipping project creation. Use --force to delete and recreate it."
+            print_error "ArgoCD project '${PROJECT_NAME}' is required for installation. Aborting."
+            exit 1
         fi
-    else
-        print_info "Creating ArgoCD project '${PROJECT_NAME}'..."
-        argocd proj create ${PROJECT_NAME} --description "${project_description}"
     fi
 
     # Add repository to project
@@ -333,41 +434,53 @@ setup_argocd_project() {
 }
 
 add_repo_to_argocd() {
-    print_info "Adding repository to ArgoCD..."
+    print_info "Verifying ArgoCD repository registry..."
     if ! argocd repo list | grep -q "${REPO_URL}"; then
-        if [ -f "${SSH_KEY_PATH}" ]; then
-            argocd repo add ${REPO_URL} --ssh-private-key-path ${SSH_KEY_PATH} || print_warn "Repository may already exist"
+        if confirm_action "Git repository '${REPO_URL}' is not registered in ArgoCD. Do you want to register it?" "y"; then
+            if [ -f "${SSH_KEY_PATH}" ]; then
+                argocd repo add ${REPO_URL} --ssh-private-key-path ${SSH_KEY_PATH} || {
+                    print_error "Failed to add repository to ArgoCD"
+                    exit 1
+                }
+            else
+                print_error "SSH key not found at ${SSH_KEY_PATH}"
+                print_info "Please provide SSH key path with --ssh-key option"
+                exit 1
+            fi
         else
-            print_error "SSH key not found at ${SSH_KEY_PATH}"
-            print_info "Please provide SSH key path with --ssh-key option"
+            print_error "ArgoCD repository is required for deployment. Aborting."
             exit 1
         fi
     else
-        print_info "Repository already added"
+        print_info "Repository already registered in ArgoCD"
     fi
 }
 
 delete_existing_app() {
     if argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null; then
         if [ "$FORCE" = true ]; then
-            print_warn "Application '${APP_NAME}' already exists. Deleting it first (--force enabled)..."
-            argocd app delete ${APP_NAME} --yes 2>/dev/null || kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
-            print_info "Waiting for application deletion to complete..."
-            sleep 3
-
-            TIMEOUT=30
-            ELAPSED=0
-            while (argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null) && [ $ELAPSED -lt $TIMEOUT ]; do
-                print_info "Waiting for application to be fully deleted... (${ELAPSED}s/${TIMEOUT}s)"
-                sleep 2
-                ELAPSED=$((ELAPSED + 2))
-            done
-            if [ $ELAPSED -ge $TIMEOUT ]; then
-                print_warn "Application deletion taking longer than expected. Removing finalizers..."
-                kubectl patch application ${APP_NAME} -n argocd -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
-                sleep 2
-                kubectl delete application ${APP_NAME} -n argocd --force --grace-period=0 2>/dev/null || true
+            if confirm_action "Application '${APP_NAME}' already exists. Force delete and recreate it?" "y"; then
+                print_warn "Deleting application '${APP_NAME}'..."
+                argocd app delete ${APP_NAME} --yes 2>/dev/null || kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
+                print_info "Waiting for application deletion to complete..."
                 sleep 3
+
+                TIMEOUT=30
+                ELAPSED=0
+                while (argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null) && [ $ELAPSED -lt $TIMEOUT ]; do
+                    print_info "Waiting for application to be fully deleted... (${ELAPSED}s/${TIMEOUT}s)"
+                    sleep 2
+                    ELAPSED=$((ELAPSED + 2))
+                done
+                if [ $ELAPSED -ge $TIMEOUT ]; then
+                    print_warn "Application deletion taking longer than expected. Removing finalizers..."
+                    kubectl patch application ${APP_NAME} -n argocd -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+                    sleep 2
+                    kubectl delete application ${APP_NAME} -n argocd --force --grace-period=0 2>/dev/null || true
+                    sleep 3
+                fi
+            else
+                print_info "Proceeding with existing application..."
             fi
         else
             print_error "Application '${APP_NAME}' already exists!"
@@ -375,6 +488,158 @@ delete_existing_app() {
             print_info "Example: $0 ${CHART} install --app ${APP_NAME}-new --force"
             exit 1
         fi
+    fi
+}
+
+# =============================================================================
+# Chart-specific: tiktok-analytics install / uninstall / status
+# =============================================================================
+
+install_tiktok_analytics() {
+    print_info "Starting TikTok Analytics Stack installation..."
+
+    create_namespace
+    setup_argocd_project "TikTok Analytics project"
+    add_repo_to_argocd
+    delete_existing_app
+
+    # Create application via ArgoCD CLI
+    print_info "Creating ArgoCD application with auto-sync enabled..."
+
+    BASE_ARGS=(
+        --repo "${REPO_URL}"
+        --path "${CHART_PATH}"
+        --dest-name in-cluster
+        --dest-namespace "${NAMESPACE}"
+        --project "${PROJECT_NAME}"
+        --sync-policy automated
+        --self-heal
+        --auto-prune
+        --helm-set "global.releaseName=${APP_NAME}"
+    )
+
+    if ! argocd app create "${APP_NAME}" \
+        "${BASE_ARGS[@]}" \
+        --upsert 2>/dev/null; then
+        print_info "Trying without upsert flag..."
+        argocd app create "${APP_NAME}" \
+            "${BASE_ARGS[@]}"
+    fi
+
+    # Configure ignoreDifferences for Rollout replicas (HPA manages these)
+    print_info "Setting ignoreDifferences for Rollout replicas..."
+    argocd app patch "${APP_NAME}" --type merge -p \
+        '{"spec":{"ignoreDifferences":[{"group":"argoproj.io","kind":"Rollout","jsonPointers":["/spec/replicas"]}]}}' 2>/dev/null || \
+        print_warn "Could not set ignoreDifferences (may require manual configuration)"
+
+    print_info "✅ ArgoCD Application created"
+
+    # Wait for auto-sync
+    print_info "Waiting for auto-sync to complete..."
+    wait_for_app_synced ${APP_NAME} 120 || {
+        print_warn "Auto-sync may still be in progress. Continuing to wait for pods..."
+    }
+
+    # Wait for pods
+    print_info "Waiting for pods to be ready..."
+    HELM_RELEASE="tiktok-analytics-stack${APP_NAME}"
+    kubectl wait --for=condition=ready pod -l app=${HELM_RELEASE} -n ${NAMESPACE} --timeout=300s || print_warn "Pod not ready yet"
+
+    # Display status
+    print_info "Installation complete!"
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  TikTok Analytics Stack Installation Complete!${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "${BLUE}Access TikTok Analytics Backend API:${NC}"
+    echo ""
+    echo -e "${GREEN}Option 1: Using kubectl proxy (Recommended)${NC}"
+    echo "  1. Start kubectl proxy in a separate terminal:"
+    echo -e "     ${GREEN}kubectl proxy${NC}"
+    echo ""
+    echo "  2. Access API via proxy:"
+    echo -e "     ${GREEN}http://localhost:8001/api/v1/namespaces/${NAMESPACE}/services/${HELM_RELEASE}:${API_PORT}/proxy/${NC}"
+    echo ""
+    echo -e "${GREEN}Option 2: Using port-forward (Direct access)${NC}"
+    echo "  1. Run port-forward in a separate terminal:"
+    echo -e "     ${GREEN}kubectl port-forward svc/${HELM_RELEASE} -n ${NAMESPACE} ${API_PORT}:${API_PORT}${NC}"
+    echo ""
+    echo -e "${BLUE}Useful Commands:${NC}"
+    echo -e "  • Check status: ${GREEN}kubectl get pods -n ${NAMESPACE}${NC}"
+    echo -e "  • View ArgoCD app: ${GREEN}argocd app get ${APP_NAME}${NC}"
+    echo ""
+}
+
+uninstall_tiktok_analytics() {
+    if [ "$FORCE" != true ]; then
+        print_error "Uninstall requires --force flag for safety"
+        print_info "Usage: $0 tiktok-analytics uninstall --force"
+        print_warn "This will delete the ArgoCD application and all TikTok Analytics resources!"
+        exit 1
+    fi
+
+    print_warn "Starting TikTok Analytics Stack uninstallation (--force enabled)..."
+
+    # Delete ArgoCD application
+    print_info "Deleting ArgoCD application '${APP_NAME}'..."
+    if argocd app get ${APP_NAME} &> /dev/null || kubectl get application ${APP_NAME} -n argocd &> /dev/null; then
+        argocd app delete ${APP_NAME} --yes 2>/dev/null || true
+        sleep 2
+
+        if kubectl get application ${APP_NAME} -n argocd &> /dev/null; then
+            kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
+            sleep 2
+        fi
+
+        if kubectl get application ${APP_NAME} -n argocd &> /dev/null; then
+            print_warn "Application deletion stuck, removing finalizers..."
+            kubectl patch application ${APP_NAME} -n argocd -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+            sleep 2
+            kubectl delete application ${APP_NAME} -n argocd 2>/dev/null || true
+        fi
+
+        sleep 2
+    else
+        print_info "Application '${APP_NAME}' does not exist"
+    fi
+
+    # Delete namespace
+    print_info "Deleting namespace '${NAMESPACE}'..."
+    if kubectl get namespace ${NAMESPACE} &> /dev/null; then
+        kubectl delete namespace ${NAMESPACE} --wait=true
+        print_info "Waiting for namespace deletion to complete..."
+        sleep 5
+    else
+        print_info "Namespace '${NAMESPACE}' does not exist"
+    fi
+
+    print_info "Uninstallation complete!"
+}
+
+status_tiktok_analytics() {
+    print_info "TikTok Analytics Stack Status:"
+    echo ""
+
+    if argocd app get ${APP_NAME} &> /dev/null; then
+        echo "ArgoCD Application:"
+        argocd app get ${APP_NAME} | head -10
+        echo ""
+    else
+        print_warn "Application '${APP_NAME}' does not exist"
+    fi
+
+    if kubectl get namespace ${NAMESPACE} &> /dev/null; then
+        HELM_RELEASE="tiktok-analytics-stack${APP_NAME}"
+        echo "Pods:"
+        kubectl get pods -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        echo ""
+
+        echo "Services:"
+        kubectl get svc -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        echo ""
+    else
+        print_warn "Namespace '${NAMESPACE}' does not exist"
     fi
 }
 
@@ -890,6 +1155,7 @@ show_usage() {
     echo "Charts:"
     echo "  amazon-watcher   Amazon Watcher Stack (backend, UI, screenshot, database)"
     echo "  zabbix           Zabbix monitoring stack (server, UI, MariaDB)"
+    echo "  tiktok-analytics TikTok Analytics Stack (backend, UI, database, redis, worker)"
     echo ""
     echo "Commands:"
     echo "  install          Install the chart via ArgoCD"
@@ -912,6 +1178,9 @@ show_usage() {
     echo ""
     echo "  # Install Zabbix with a specific version"
     echo "  $0 zabbix install --version 7.4.6"
+    echo ""
+    echo "  # Install TikTok Analytics with defaults"
+    echo "  $0 tiktok-analytics install"
     echo ""
     echo "  # Force recreate Amazon Watcher"
     echo "  $0 amazon-watcher install --app prod --force"
@@ -944,22 +1213,25 @@ case "$COMMAND" in
     install)
         check_prerequisites
         case "$CHART" in
-            amazon-watcher) install_amazon_watcher ;;
-            zabbix)         install_zabbix ;;
+            amazon-watcher)   install_amazon_watcher ;;
+            zabbix)           install_zabbix ;;
+            tiktok-analytics) install_tiktok_analytics ;;
         esac
         ;;
     uninstall)
         check_prerequisites
         case "$CHART" in
-            amazon-watcher) uninstall_amazon_watcher ;;
-            zabbix)         uninstall_zabbix ;;
+            amazon-watcher)   uninstall_amazon_watcher ;;
+            zabbix)           uninstall_zabbix ;;
+            tiktok-analytics) uninstall_tiktok_analytics ;;
         esac
         ;;
     status)
         check_prerequisites
         case "$CHART" in
-            amazon-watcher) status_amazon_watcher ;;
-            zabbix)         status_zabbix ;;
+            amazon-watcher)   status_amazon_watcher ;;
+            zabbix)           status_zabbix ;;
+            tiktok-analytics) status_tiktok_analytics ;;
         esac
         ;;
     *)
@@ -968,3 +1240,4 @@ case "$COMMAND" in
         exit 1
         ;;
 esac
+

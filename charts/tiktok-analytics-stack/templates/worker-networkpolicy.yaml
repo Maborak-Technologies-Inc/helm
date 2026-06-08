@@ -1,0 +1,60 @@
+{{- if and .Values.worker.enabled .Values.worker.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-worker
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  policyTypes:
+    - Egress
+  {{- if .Values.worker.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.worker.networkPolicy.egress | nindent 4 }}
+  {{- else }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: database
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    # Allow DNS within the cluster
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.worker.networkPolicy.allowed }}
+    - to:
+        {{- range .Values.worker.networkPolicy.allowed }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

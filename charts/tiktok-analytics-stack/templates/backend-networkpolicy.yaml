@@ -1,0 +1,65 @@
+{{- if and .Values.backend.enabled .Values.backend.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-backend
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if .Values.backend.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml .Values.backend.networkPolicy.ingress | nindent 4 }}
+  {{- else }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ui
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+  {{- end }}
+  {{- if .Values.backend.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.backend.networkPolicy.egress | nindent 4 }}
+  {{- else }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: database
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    - to:
+        namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 443
+  {{- end }}
+{{- end }}

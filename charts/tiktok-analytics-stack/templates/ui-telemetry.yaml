@@ -1,0 +1,34 @@
+{{- if and .Values.ui.enabled .Values.istio.enabled .Values.istio.telemetry.enabled }}
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-ui
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ui
+  {{- if .Values.istio.telemetry.metrics }}
+  metrics:
+    {{- toYaml .Values.istio.telemetry.metrics | nindent 4 }}
+  {{- else }}
+  metrics:
+    - providers:
+        - name: prometheus
+  {{- end }}
+  {{- if .Values.istio.telemetry.accessLogging }}
+  accessLogging:
+    {{- toYaml .Values.istio.telemetry.accessLogging | nindent 4 }}
+  {{- end }}
+  {{- if .Values.istio.telemetry.tracing }}
+  tracing:
+    {{- toYaml .Values.istio.telemetry.tracing | nindent 4 }}
+  {{- end }}
+{{- end }}

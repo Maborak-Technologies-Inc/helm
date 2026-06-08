@@ -1,0 +1,24 @@
+{{- if and .Values.backend.enabled .Values.backend.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-backend
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.backend.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.backend.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.backend.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.backend.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+{{- end }}

@@ -1,0 +1,49 @@
+{{- if not .Values.secrets.jwtSecret }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

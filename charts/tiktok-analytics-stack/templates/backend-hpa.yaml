@@ -1,0 +1,45 @@
+{{- $hpaEnabled := .Values.backend.autoscaling.enabled }}
+{{- if ne (printf "%v" .Values.global.hpa) "" }}
+  {{- $hpaEnabled = .Values.global.hpa }}
+{{- end }}
+{{- if and .Values.backend.enabled $hpaEnabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-backend
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ include "tiktok-analytics-stack.fullname" . }}-backend
+  minReplicas: {{ .Values.backend.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.backend.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.backend.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.backend.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.backend.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.backend.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.backend.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.backend.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}

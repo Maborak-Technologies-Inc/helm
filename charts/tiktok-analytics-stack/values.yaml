@@ -1,0 +1,450 @@
+# Default values for tiktok-analytics-stack
+# This is a YAML-formatted file.
+
+nameOverride: "tiktok"
+fullnameOverride: ""
+
+# Global configuration
+imagePullSecrets:
+  - name: apt-docker-server
+
+global:
+  context: tiktok-analytics
+  domain:
+    ui: "ui.tiktok.local" # UI domain - Required for ingress
+    backend: "api.tiktok.local" # Backend domain - Required for ingress
+  # Global HPA override (empty = use individual service settings, true/false = override all)
+  hpa: true
+  # Global rollout configuration
+  revisionHistoryLimit: 3
+  # Global persistent storage (not strictly required since screenshot service/PVC was removed)
+  storage:
+    enabled: false
+    storageClassName: "nfs-client"
+    size: 10Gi
+    accessModes:
+      - ReadWriteMany
+
+# Database Configuration
+database:
+  enabled: true
+  postgres:
+    version: "16-alpine"
+    db: tiktok
+    user: postgres
+    password: tiktok_postgres_password
+    port: 5432
+    dataPath: /var/lib/postgresql/data/pgdata
+  storage:
+    storageClassName: "" # Keep empty to match default storage class
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  pvcRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Retain
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 500m
+  healthCheck:
+    enabled: true
+    intervalSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 5
+    initialDelaySeconds: 10
+  networkPolicy:
+    enabled: true
+
+# Redis Configuration
+redis:
+  enabled: true
+  version: "7-alpine"
+  password: "tiktok_redis_password"
+  port: 6379
+  db: 0
+  storage:
+    storageClassName: ""
+    size: 2Gi
+    accessModes:
+      - ReadWriteOnce
+  pvcRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Retain
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+  config:
+    maxmemory: "384mb"
+    maxmemory-policy: "noeviction"
+    appendonly: "yes"
+    appendfsync: "everysec"
+  healthCheck:
+    enabled: true
+    intervalSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 5
+    initialDelaySeconds: 5
+  networkPolicy:
+    enabled: true
+
+# Backend Service Configuration
+backend:
+  enabled: true
+  replicas: 3
+  image:
+    repository: maborak/platform
+    tag: "tiktok-backend-0.1"
+    pullPolicy: Always
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 256Mi
+      cpu: 200m
+  service:
+    type: ClusterIP
+  healthCheck:
+    enabled: true
+    path: /health
+    port: 9020
+    readinessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 2
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      timeoutSeconds: 10
+      failureThreshold: 5
+  # Backend environment variables
+  env:
+    PHOVEU_APP_NAME: "Phoveus"
+    PHOVEU_APP_LEGAL_ENTITY: "Phoveus"
+    PHOVEU_SUPPORT_EMAIL: "phoveus@maborak.com"
+    PHOVEU_FRAMEWORK_NAME: "maborak framework"
+    PHOVEU_FRAMEWORK_VERSION_FORMAT: "v{{version}} · hexagonal"
+    DOMAIN_UI: "" # Auto-generated from global.domain.ui if empty
+    DOMAIN_UI_SCHEME: "http"
+    PHOVEU_BACKEND_CAPTCHA_TYPE: "none"
+    PHOVEU_BACKEND_RECAPTCHA_V3_SECRET_KEY: "6Lejc1csAAAAAI-_ifGaGOLIK8jyk3Mv78-i3wtp"
+    PHOVEU_BACKEND_TURNSTILE_SECRET_KEY: "0x4AAAAAACSywaSu-nfefLxLT2pQJxV5vf0"
+    PHOVEU_BACKEND_RECAPTCHA_V3_THRESHOLD: "0.5"
+    PHOVEU_BACKEND_DATABASE_URL: "" # Auto-populated from in-chart DB when empty
+    PHOVEU_BACKEND_DB_ECHO: "false"
+    PHOVEU_BACKEND_DB_ECHO_POOL: "false"
+    PHOVEU_BACKEND_DB_POOL_SIZE: "20"
+    PHOVEU_BACKEND_DB_MAX_OVERFLOW: "30"
+    PHOVEU_BACKEND_DB_POOL_TIMEOUT: "30"
+    PHOVEU_BACKEND_DB_POOL_RECYCLE: "3600"
+    PHOVEU_BACKEND_DB_USE_REPLICA_ENGINE: "false"
+    PHOVEU_BACKEND_DB_READ_URL: ""
+    PHOVEU_BACKEND_DB_WRITE_URL: ""
+    PHOVEU_BACKEND_DB_READ_POOL_SIZE: "10"
+    PHOVEU_BACKEND_DB_WRITE_POOL_SIZE: "20"
+    PHOVEU_BACKEND_DB_STATEMENT_TIMEOUT_MS: "0"
+    PHOVEU_BACKEND_TABLE_WORKERS: "workers"
+    PHOVEU_BACKEND_TABLE_BENCH: "bench"
+    PHOVEU_BACKEND_TABLE_USERS: "users"
+    PHOVEU_BACKEND_TABLE_USER_SESSIONS: "user_sessions"
+    PHOVEU_BACKEND_TABLE_USER_TOKENS: "user_tokens"
+    PHOVEU_BACKEND_TABLE_USER_PERMISSIONS: "user_permissions"
+    PHOVEU_BACKEND_UVI_HOST: "0.0.0.0"
+    PHOVEU_BACKEND_UVI_PORT: "9020"
+    PHOVEU_BACKEND_RELOAD: "false"
+    PHOVEU_BACKEND_LOG_LEVEL: "info"
+    PHOVEU_BACKEND_CLI_LOG_LEVEL: "info"
+    PHOVEU_BACKEND_DEBUG_MODE: "false"
+    PHOVEU_BACKEND_UVI_ACCESS_LOG: "true"
+    PHOVEU_BACKEND_UVI_WORKERS: "5"
+    PHOVEU_BACKEND_UVI_LIMIT_CONCURRENCY: "100"
+    PHOVEU_BACKEND_UVI_LIMIT_MAX_REQUESTS: "1000"
+    PHOVEU_BACKEND_UVI_TIMEOUT_KEEP_ALIVE: "30"
+    PHOVEU_BACKEND_UVI_TIMEOUT_GRACEFUL_SHUTDOWN: "30"
+    PHOVEU_BACKEND_JWT_ALGORITHM: "HS256"
+    PHOVEU_BACKEND_JWT_SECRET: "" # Set a strong secret key for JWT signing
+    PHOVEU_DEV_MODE: "false"
+    PHOVEU_BACKEND_CORS_ORIGINS: "*"
+    PHOVEU_BACKEND_CORS_ALLOW_CREDENTIALS: "true"
+    PHOVEU_BACKEND_CORS_ALLOW_METHODS: "*"
+    PHOVEU_BACKEND_CORS_ALLOW_HEADERS: "*"
+    PHOVEU_BACKEND_CORS_EXPOSE_HEADERS: "X-Track-RateLimit-Limit,X-Track-RateLimit-Remaining,X-Track-RateLimit-Reset,X-Track-RateLimit-RetryAfter"
+    PHOVEU_BACKEND_CORS_MAX_AGE: "600"
+    PHOVEU_BACKEND_GUEST_CHECK_MAX_ATTEMPTS: "1"
+    PHOVEU_BACKEND_GUEST_CHECK_TTL_SECONDS: "86400"
+    PHOVEU_BACKEND_RATE_LIMIT_ENABLED: "true"
+    PHOVEU_BACKEND_RATE_LIMIT_REQUESTS: "20000"
+    PHOVEU_BACKEND_RATE_LIMIT_WINDOW: "60"
+    PHOVEU_BACKEND_RATE_LIMIT_BYPASS_KEY: ""
+    PHOVEU_BACKEND_RATE_LIMIT_EXCLUDED_PATHS: "/docs,/redoc,/openapi.json,/favicon.ico,/health"
+    PHOVEU_BACKEND_RATE_LIMIT_BYPASS_PATHS: ""
+    PHOVEU_BACKEND_TRACK_RATE_LIMIT_UNVERIFIED: "10"
+    PHOVEU_BACKEND_TRACK_RATE_LIMIT_VERIFIED: "50"
+    PHOVEU_BACKEND_TRACK_RATE_LIMIT_WINDOW: "60"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_LOGIN_MAX_REQUESTS: "200"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_LOGIN_WINDOW: "60"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_REGISTER_MAX_REQUESTS: "200"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_REGISTER_WINDOW: "60"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_VERIFY_MAX_REQUESTS: "500"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_VERIFY_WINDOW: "3600"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_MAX_REQUESTS: "500"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_PASSWORD_RESET_WINDOW: "300"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_REFRESH_MAX_REQUESTS: "400"
+    PHOVEU_BACKEND_RATE_LIMIT_AUTH_REFRESH_WINDOW: "60"
+    PHOVEU_BACKEND_HTTP_ENGINE: "requests"
+    PHOVEU_BACKEND_HTTP_TIMEOUT: "10.0"
+    PHOVEU_BACKEND_HTTP_RETRIES: "1"
+    PHOVEU_BACKEND_HTTP_MAX_CONNECTIONS: "10"
+    PHOVEU_BACKEND_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    PHOVEU_BACKEND_API_PAGE_SIZE_DEFAULT: "10"
+    PHOVEU_BACKEND_API_PAGE_SIZE_MAX: "100"
+    PHOVEU_BACKEND_LIMIT_MIN_NOTIFICATION_FREQUENCY_MINUTES: "15"
+    PHOVEU_BACKEND_API_BENCH_LIMIT_MAX: "100"
+    PHOVEU_BACKEND_TICKET_UPLOAD_STORAGE_PATH: "data/uploads/tickets"
+    PHOVEU_BACKEND_LIVECHAT_UPLOAD_STORAGE_PATH: "data/uploads/livechat"
+    PHOVEU_BACKEND_BENCH_KEY: ""
+    PHOVEU_BACKEND_TEST_MODE: "false"
+    PHOVEU_BACKEND_HOOKS_USE_DB_CONFIG: "false"
+    PHOVEU_BACKEND_HOOK_LOG_ENABLED: "true"
+    PHOVEU_BACKEND_HOOK_EMAIL_ENABLED: "true"
+    PHOVEU_BACKEND_HOOK_EMAIL_SENDER: "wilmer@maborak.com"
+    PHOVEU_BACKEND_HOOK_EMAIL_SENDER_NAME: "Phoveus"
+    PHOVEU_BACKEND_HOOK_EMAIL_RECEIVER: "maborak@gmail.com"
+    PHOVEU_BACKEND_HOOK_EMAIL_USERNAME: "sender"
+    PHOVEU_BACKEND_HOOK_EMAIL_PASSWORD: "nulled-by-wilmer-taiquuj0ieng6Sa9Veejoh"
+    PHOVEU_BACKEND_HOOK_EMAIL_SMTP_HOST: "142.44.188.182"
+    PHOVEU_BACKEND_HOOK_EMAIL_SMTP_PORT: "2525"
+    PHOVEU_BACKEND_HOOK_EMAIL_SMTP_SECURITY: "plain"
+    PHOVEU_BACKEND_HOOK_EMAIL_SMTP_VERIFY_SSL: "false"
+    PHOVEU_BACKEND_HOOK_EMAIL_CONTENT_ENCODING: "quoted-printable"
+    PHOVEU_BACKEND_HOOK_EMAIL_TEMPLATE_SET: "default"
+    PHOVEU_BACKEND_HOOK_EMAIL_TEMPLATES_DIR: ""
+    PHOVEU_BACKEND_HOOK_EMAIL_NOTIFY_VERIFICATION: "true"
+    PHOVEU_BACKEND_HOOK_EMAIL_VERIFICATION_PATH: "/account/verify"
+    PHOVEU_BACKEND_HOOK_EMAIL_RECIPIENT_VERIFICATION_PATH: "/account/verify-recipient"
+    PHOVEU_BACKEND_HOOK_EMAIL_NOTIFY_PASSWORD_RESET: "true"
+    PHOVEU_BACKEND_HOOK_EMAIL_PASSWORD_RESET_PATH: "/account/reset-password"
+    PHOVEU_SUPPORT_INBOUND_SERVER: "imap.maborak.com"
+    PHOVEU_SUPPORT_INBOUND_PORT: "993"
+    PHOVEU_SUPPORT_INBOUND_USERNAME: "tickets@maborak.com"
+    PHOVEU_SUPPORT_INBOUND_EMAIL: "tickets@maborak.com"
+    PHOVEU_SUPPORT_INBOUND_PASSWORD: "sample123#"
+    PHOVEU_SUPPORT_INBOUND_USE_SSL: "true"
+    PHOVEU_SUPPORT_OUTBOUND_SENDER_NAME: "Phoveus Support"
+    PHOVEU_BACKEND_PAYPAL_CLIENT_ID: ""
+    PHOVEU_BACKEND_PAYPAL_SECRET: ""
+    PHOVEU_BACKEND_PAYPAL_WEBHOOK_ID: ""
+    PHOVEU_BACKEND_PAYPAL_MODE: "sandbox"
+    PHOVEU_BACKEND_STRIPE_SECRET_KEY: ""
+    PHOVEU_BACKEND_STRIPE_WEBHOOK_SECRET: ""
+    PHOVEU_BACKEND_TIKTOK_EULER_API_KEY: "euler_OGIyYjA0OGFhZDhmYzZkZWM2OTFmZDM4YjljNGI5ZGE0MGU5NDAyMjY3MmM1NWFmODUxNjkx"
+    PHOVEU_BACKEND_TIKTOK_LISTENER_MODE: "worker"
+    PHOVEU_BACKEND_TIKTOK_LOG_TO_FILE: "false"
+    PHOVEU_BACKEND_TIKTOK_LOG_DIR: ""
+    PHOVEU_BACKEND_TIKTOK_LOG_RETENTION_HOURS: "24"
+    PHOVEU_BACKEND_REDIS_URL: "" # Auto-populated from in-chart Redis when empty
+    PHOVEU_BACKEND_TIKTOK_WS_STATE_PUSH: "shadow"
+    PHOVEU_BACKEND_TIKTOK_WS_FANOUT_SOURCE: "db_tail"
+    PHOVEU_BACKEND_TIKTOK_WS_ENABLED: "true"
+    PHOVEU_BACKEND_TIKTOK_EVENT_EXECUTOR_THREADS: "64"
+
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  networkPolicy:
+    enabled: false
+  rollout:
+    revisionHistoryLimit: null
+    progressDeadlineSeconds: 1800
+    strategy:
+      canary:
+        minPodsPerReplicaSet: 0
+        steps:
+          - setWeight: 10
+          - pause:
+              duration: 30
+          - setWeight: 50
+          - pause:
+              duration: 60
+          - setWeight: 100
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+# TikTok Listener Worker Configuration
+worker:
+  enabled: true
+  replicas: 1
+  command: "python cli.py system tiktok run-listener"
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 256Mi
+      cpu: 200m
+  networkPolicy:
+    enabled: true
+    allowed: ["192.168.0.0/24"]
+
+# UI Service Configuration
+ui:
+  enabled: true
+  replicas: 1
+  image:
+    repository: maborak/platform
+    tag: "tiktok-ui-0.1"
+    pullPolicy: Always
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 500m
+    requests:
+      memory: 512Mi
+      cpu: 100m
+  service:
+    type: ClusterIP
+  healthCheck:
+    enabled: true
+    path: /
+    port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  # UI environment variables (VITE_* prefix)
+  env:
+    VITE_API_BASE_URL: "" # Auto-generated from backend domain if empty (uses //api.tiktok.local)
+    VITE_API_TIMEOUT: "30"
+    VITE_API_CACHE_TTL: "10000"
+    VITE_CONNECTIVITY_CHECK_INTERVAL: "60"
+    VITE_APP_NAME: "Phoveus"
+    VITE_APP_VERSION: "0.0.1"
+    VITE_APP_DOMAIN: "maborak.com"
+    VITE_APP_LEGAL_ENTITY: "Phoveus"
+    VITE_APP_MODE: "full"
+    VITE_LOADER_TYPE: "shimmer"
+    VITE_BUILD_DATE: "2026-02-04T07:05:03Z"
+    VITE_DEBUG_MODE: "false"
+    VITE_LOG_LEVEL: "info"
+    VITE_SUPPORT_EMAIL: "phoveus@maborak.com"
+    VITE_USER_ROUTE_PREFIX: "k7m2x9p4q3"
+    VITE_ADMIN_ROUTE_PREFIX: "lasjdhj2j3hjkh23k4h"
+    VITE_CAPTCHA_PROVIDER: "none"
+    VITE_RECAPTCHA_SITE_KEY: "6Lejc1csAAAAAMcSkjVoAD4xGm1Nm6aIwhy1AUrL"
+    VITE_TURNSTILE_SITE_KEY: "0x4AAAAAACSywe2vgnS_c_an"
+
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  networkPolicy:
+    enabled: false
+  rollout:
+    revisionHistoryLimit: null
+    progressDeadlineSeconds: 1800
+    strategy:
+      canary:
+        minPodsPerReplicaSet: 0
+        steps:
+          - setWeight: 10
+          - pause:
+              duration: 30
+          - setWeight: 50
+          - pause:
+              duration: 60
+          - setWeight: 100
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+# Istio Service Mesh Configuration
+istio:
+  enabled: false
+  virtualService:
+    enabled: false
+  destinationRule:
+    enabled: false
+  telemetry:
+    enabled: false
+
+# Kubernetes Ingress Configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  tls:
+    enabled: false
+
+# Secrets (sensitive values)
+secrets:
+  databasePassword: ""
+  redisPassword: ""
+  jwtSecret: ""
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 2000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Security Context
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+# Node Selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Annotations
+podAnnotations: {}
+
+# Labels
+podLabels: {}
+
+# ArgoCD Configuration
+argocd:
+  annotations:
+    app.maborak.com/contact: "wilmer@maborak.com"
+    app.maborak.com/created-by: "argo-cd"
+    app.maborak.com/department: "Platform"
+    app.maborak.com/project: "tiktok-analytics"
+
+  labels:
+    app.maborak.com/bounded-context: "tiktok-analytics"
+    app.maborak.com/chart-name: "tiktok-analytics-stack"
+    app.maborak.com/cluster-name: "tiktok-analytics-stack"
+    app.maborak.com/environment: "Production"
+    app.maborak.com/family: "Backend"
+    app.maborak.com/runtime: "EKS"
+    app.maborak.com/service-runtime: "Python"
+    app.maborak.com/team: "Platform"
+    app.maborak.com/tier: "T1"
+    app.maborak.com/type: "Business"
+    argocd.argoproj.io/instance: "tiktok-prod"
+    platform.maborak.com/namespace: "tiktok"

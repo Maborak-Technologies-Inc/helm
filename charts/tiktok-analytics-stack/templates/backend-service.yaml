@@ -1,0 +1,19 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+    - port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+{{- end }}

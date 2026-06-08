@@ -1,0 +1,14 @@
+apiVersion: v2
+name: tiktok-analytics-stack
+description: A Helm chart for deploying the complete TikTok Analytics Stack (Backend, Worker, UI, Database, Redis, and Ingress routing)
+type: application
+version: 0.1.0
+appVersion: "0.1"
+keywords:
+  - tiktok
+  - analytics
+  - bot
+  - monitoring
+maintainers:
+  - name: maborak
+    email: maborak@maborak.com

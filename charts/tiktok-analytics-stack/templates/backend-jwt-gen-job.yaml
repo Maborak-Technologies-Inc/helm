@@ -1,0 +1,64 @@
+{{- if not .Values.secrets.jwtSecret }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "0"
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      name: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+    spec:
+      serviceAccountName: {{ include "tiktok-analytics-stack.fullname" . }}-jwt-gen
+      restartPolicy: OnFailure
+      containers:
+        - name: jwt-gen
+          image: bitnami/kubectl:latest
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              SECRET_NAME="{{ include "tiktok-analytics-stack.fullname" . }}-backend-secret"
+              
+              if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+                EXISTING_SECRET=$(kubectl get secret "$SECRET_NAME" -o jsonpath='{.data.jwt-secret}' 2>/dev/null || echo "")
+                if [ -n "$EXISTING_SECRET" ] && [ "$EXISTING_SECRET" != "" ]; then
+                  DECODED=$(echo "$EXISTING_SECRET" | base64 -d 2>/dev/null || echo "")
+                  if [ -n "$DECODED" ] && [ ${#DECODED} -gt 0 ]; then
+                    echo "Secret $SECRET_NAME already exists with a non-empty jwt-secret value"
+                    exit 0
+                  fi
+                fi
+                echo "Secret $SECRET_NAME exists but jwt-secret is empty, will generate and patch..."
+              fi
+              
+              echo "Generating random JWT secret..."
+              JWT_SECRET=$(date +%s%N | sha256sum | base64 | head -c 32)
+              
+              if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+                echo "Patching existing secret with generated JWT secret..."
+                kubectl patch secret "$SECRET_NAME" -p "{\"data\":{\"jwt-secret\":\"$(echo -n "$JWT_SECRET" | base64)\"}}"
+                echo "Secret $SECRET_NAME patched successfully"
+              else
+                cat <<EOF | kubectl create -f -
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: $SECRET_NAME
+                labels:
+                  app.kubernetes.io/managed-by: Helm
+                annotations:
+                  "argocd.argoproj.io/sync-options": Prune=false
+              type: Opaque
+              stringData:
+                jwt-secret: "$JWT_SECRET"
+              EOF
+                echo "Secret $SECRET_NAME created successfully"
+              fi
+{{- end }}

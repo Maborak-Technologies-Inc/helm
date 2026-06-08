@@ -1,0 +1,17 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-redis-config
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+data:
+  redis.conf: |
+    appendonly {{ .Values.redis.config.appendonly | default "yes" }}
+    appendfsync {{ .Values.redis.config.appendfsync | default "everysec" }}
+    maxmemory {{ .Values.redis.config.maxmemory | default "384mb" }}
+    maxmemory-policy {{ index .Values.redis.config "maxmemory-policy" | default "noeviction" }}
+    port {{ .Values.redis.port | default 6379 }}
+    dir /data
+{{- end }}

@@ -1,0 +1,137 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-redis
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ include "tiktok-analytics-stack.redis.serviceName" . }}
+  replicas: 1
+  {{- if .Values.redis.pvcRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.redis.pvcRetentionPolicy.whenDeleted | default "Retain" }}
+    whenScaled: {{ .Values.redis.pvcRetentionPolicy.whenScaled | default "Retain" }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+      initContainers:
+        - name: init-redis-permissions
+          image: alpine:latest
+          command: ['sh', '-c']
+          args:
+            - |
+              chown -R 999:999 /data
+              chmod 700 /data
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: redis
+          image: {{ include "tiktok-analytics-stack.redis.image" . }}
+          imagePullPolicy: Always
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+            - --requirepass
+            - "$(REDIS_PASSWORD)"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tiktok-analytics-stack.fullname" . }}-redis-secret
+                  key: redis-password
+          ports:
+            - name: redis
+              containerPort: {{ .Values.redis.port }}
+              protocol: TCP
+          {{- if .Values.redis.healthCheck.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+            initialDelaySeconds: {{ .Values.redis.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.redis.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.redis.healthCheck.failureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG
+            initialDelaySeconds: {{ .Values.redis.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.redis.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.redis.healthCheck.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: redis-config
+              mountPath: /etc/redis
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: redis-config
+          configMap:
+            name: {{ include "tiktok-analytics-stack.fullname" . }}-redis-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- range .Values.redis.storage.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- if .Values.redis.storage.storageClassName }}
+        storageClassName: {{ .Values.redis.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.storage.size | quote }}
+{{- end }}

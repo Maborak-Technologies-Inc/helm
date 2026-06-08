@@ -1,0 +1,36 @@
+{{- if and .Values.backend.enabled .Values.istio.enabled .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  hosts:
+    - {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+    {{- if .Values.global.domain.backend }}
+    - {{ .Values.global.domain.backend }}
+    {{- end }}
+  http:
+    {{- if .Values.istio.virtualService.routes }}
+    {{- toYaml .Values.istio.virtualService.routes | nindent 4 }}
+    {{- else }}
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+            subset: stable
+          weight: 100
+        - destination:
+            host: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+            subset: canary
+          weight: 0
+    {{- end }}
+{{- end }}

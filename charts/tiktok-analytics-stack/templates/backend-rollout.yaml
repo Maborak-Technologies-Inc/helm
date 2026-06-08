@@ -1,0 +1,115 @@
+{{- if .Values.backend.enabled }}
+{{- include "tiktok-analytics-stack.backend.validateDatabase" . }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-backend
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $hpaEnabled := .Values.backend.autoscaling.enabled }}
+  {{- if ne (printf "%v" .Values.global.hpa) "" }}
+    {{- $hpaEnabled = .Values.global.hpa }}
+  {{- end }}
+  {{- if not $hpaEnabled }}
+  replicas: {{ .Values.backend.replicas }}
+  {{- else if .Values.backend.autoscaling.minReplicas }}
+  replicas: {{ .Values.backend.autoscaling.minReplicas }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.backend.rollout.revisionHistoryLimit | default .Values.global.revisionHistoryLimit | default 10 }}
+  {{- if .Values.backend.rollout.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.backend.rollout.progressDeadlineSeconds }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/env: {{ include "tiktok-analytics-stack.backend.envChecksum" . }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "tiktok-analytics-stack.fullname" . }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: {{ include "tiktok-analytics-stack.backend.image" . }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          workingDir: /app
+          env:
+            {{- include "tiktok-analytics-stack.backend.computedEnv" . | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+              protocol: TCP
+          {{- if .Values.backend.healthCheck.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.healthCheck.path }}
+              port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+            initialDelaySeconds: {{ .Values.backend.healthCheck.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.healthCheck.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.healthCheck.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.healthCheck.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.healthCheck.path }}
+              port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+            initialDelaySeconds: {{ .Values.backend.healthCheck.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.healthCheck.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.healthCheck.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.healthCheck.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.backend.rollout.strategy }}
+  strategy:
+    {{- if .Values.backend.rollout.strategy.canary }}
+    canary:
+      stableService: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
+      canaryService: {{ include "tiktok-analytics-stack.backend.canaryServiceName" . }}
+      {{- $canary := omit .Values.backend.rollout.strategy.canary "stableService" "canaryService" }}
+      {{- if $canary }}
+      {{- toYaml $canary | replace "templateName: backend-health-check" (printf "templateName: %s" (include "tiktok-analytics-stack.backend.analysisTemplateName" .)) | nindent 6 }}
+      {{- end }}
+    {{- else }}
+    {{- toYaml .Values.backend.rollout.strategy | nindent 4 }}
+    {{- end }}
+  {{- else }}
+  strategy:
+    canary:
+      steps: []
+  {{- end }}
+{{- end }}

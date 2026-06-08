@@ -1,0 +1,19 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tiktok-analytics-stack.db.serviceName" . }}
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.database.postgres.port }}
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+{{- end }}

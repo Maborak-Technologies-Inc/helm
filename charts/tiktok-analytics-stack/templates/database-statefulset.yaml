@@ -1,0 +1,134 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-db
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ include "tiktok-analytics-stack.db.serviceName" . }}
+  replicas: 1
+  {{- if .Values.database.pvcRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.database.pvcRetentionPolicy.whenDeleted | default "Retain" }}
+    whenScaled: {{ .Values.database.pvcRetentionPolicy.whenScaled | default "Retain" }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 999
+      initContainers:
+        - name: init-db-permissions
+          image: alpine:3.20
+          command: ['sh', '-c']
+          args:
+            - |
+              chown -R 999:999 {{ .Values.database.postgres.dataPath }}
+              chmod 700 {{ .Values.database.postgres.dataPath }}
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.database.postgres.dataPath }}
+              {{- if .Values.database.storage.subPath }}
+              subPath: {{ .Values.database.storage.subPath | quote }}
+              {{- end }}
+      containers:
+        - name: postgres
+          image: {{ include "tiktok-analytics-stack.db.image" . }}
+          imagePullPolicy: Always
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.database.postgres.db | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.database.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tiktok-analytics-stack.fullname" . }}-db-secret
+                  key: postgres-password
+            - name: PGDATA
+              value: {{ .Values.database.postgres.dataPath | quote }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.database.postgres.port }}
+              protocol: TCP
+          {{- if .Values.database.healthCheck.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgres.user }}
+            initialDelaySeconds: {{ .Values.database.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.database.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.database.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.database.healthCheck.failureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgres.user }}
+            initialDelaySeconds: {{ .Values.database.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.database.healthCheck.intervalSeconds }}
+            timeoutSeconds: {{ .Values.database.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.database.healthCheck.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.database.postgres.dataPath }}
+              {{- if .Values.database.storage.subPath }}
+              subPath: {{ .Values.database.storage.subPath | quote }}
+              {{- end }}
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- range .Values.database.storage.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- if .Values.database.storage.storageClassName }}
+        storageClassName: {{ .Values.database.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.storage.size | quote }}
+{{- end }}
