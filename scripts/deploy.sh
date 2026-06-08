@@ -71,7 +71,7 @@ set_chart_defaults() {
         amazon-watcher)
             DEFAULT_NAMESPACE="automated"
             DEFAULT_APP_NAME="prod"
-            DEFAULT_PROJECT_NAME="zabbix"
+            DEFAULT_PROJECT_NAME="amazon-watcher"
             DEFAULT_CHART_PATH="charts/amazon-watcher-stack"
             API_PORT=9000
             ;;
@@ -390,33 +390,36 @@ install_amazon_watcher() {
     add_repo_to_argocd
     delete_existing_app
 
-    # Create application via YAML template (supports ignoreDifferences for Rollouts)
+    # Create application via ArgoCD CLI
     print_info "Creating ArgoCD application with auto-sync enabled..."
 
-    TEMPLATE_FILE="${REPO_ROOT}/docs/argocd-application-template.yaml"
+    BASE_ARGS=(
+        --repo "${REPO_URL}"
+        --path "${CHART_PATH}"
+        --dest-name in-cluster
+        --dest-namespace "${NAMESPACE}"
+        --project "${PROJECT_NAME}"
+        --sync-policy automated
+        --self-heal
+        --auto-prune
+        --helm-set "global.releaseName=${APP_NAME}"
+    )
 
-    if [ ! -f "${TEMPLATE_FILE}" ]; then
-        print_error "Application template not found at ${TEMPLATE_FILE}"
-        exit 1
+    if ! argocd app create "${APP_NAME}" \
+        "${BASE_ARGS[@]}" \
+        --upsert 2>/dev/null; then
+        print_info "Trying without upsert flag..."
+        argocd app create "${APP_NAME}" \
+            "${BASE_ARGS[@]}"
     fi
 
-    TEMP_MANIFEST=$(mktemp)
-    sed -e "s|\${APP_NAME}|${APP_NAME}|g" \
-        -e "s|\${PROJECT_NAME}|${PROJECT_NAME}|g" \
-        -e "s|\${REPO_URL}|${REPO_URL}|g" \
-        -e "s|\${CHART_PATH}|${CHART_PATH}|g" \
-        -e "s|\${NAMESPACE}|${NAMESPACE}|g" \
-        "${TEMPLATE_FILE}" > "${TEMP_MANIFEST}"
+    # Configure ignoreDifferences for Rollout replicas (HPA manages these)
+    print_info "Setting ignoreDifferences for Rollout replicas..."
+    argocd app patch "${APP_NAME}" --type merge -p \
+        '{"spec":{"ignoreDifferences":[{"group":"argoproj.io","kind":"Rollout","jsonPointers":["/spec/replicas"]}]}}' 2>/dev/null || \
+        print_warn "Could not set ignoreDifferences (may require manual configuration)"
 
-    print_info "Applying ArgoCD Application manifest..."
-    kubectl apply -f "${TEMP_MANIFEST}" || {
-        print_error "Failed to create ArgoCD application"
-        rm -f "${TEMP_MANIFEST}"
-        exit 1
-    }
-
-    rm -f "${TEMP_MANIFEST}"
-    print_info "✅ ArgoCD Application created with ignoreDifferences configured"
+    print_info "✅ ArgoCD Application created"
 
     # Wait for auto-sync
     print_info "Waiting for auto-sync to complete..."

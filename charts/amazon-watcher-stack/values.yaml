@@ -340,7 +340,7 @@ backend:
     APT_BACKEND_SCREENSHOT_ALWAYS: "true"
     APT_BACKEND_SCREENSHOT_MAX_RETRIES: "3"
     APT_BACKEND_SCREENSHOT_STORAGE_PATH: "/var/screenshots" # Mounted from global.storage (shared with CLI Job)
-    APT_BACKEND_SCREENSHOT_SERVICE_URL: "http://192.168.0.40:3000/amazon" # Auto-generated from screenshot service if empty
+    APT_BACKEND_SCREENSHOT_SERVICE_URL: "" # Auto-generated from in-chart screenshot service when empty
     APT_BACKEND_SCREENSHOT_SERVICE_WIDTH: "1200"
     APT_BACKEND_SCREENSHOT_SERVICE_HEIGHT: "960"
     APT_BACKEND_SCREENSHOT_SERVICE_FULL_PAGE: "false"
