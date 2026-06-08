@@ -3,10 +3,10 @@ entries:
   amazon-watcher-stack:
   - apiVersion: v2
     appVersion: "0.1"
-    created: "2026-06-08T03:29:15.637496639Z"
+    created: "2026-06-08T17:21:46.464375542Z"
     description: A Helm chart for deploying the complete Amazon Watcher Stack (Backend,
       UI, Screenshot service, Database, and Ingress routing)
-    digest: 47ede1658c1e64149de1761cc017e5b40d7c281cd73a9926a87790674ce710fc
+    digest: eb0030f46fcfa43005f89a3d388e380ef37c43fc8da3545b8b23230072a67adf
     keywords:
     - amazon
     - watcher
@@ -20,12 +20,32 @@ entries:
     urls:
     - https://maborak-technologies-inc.github.io/helm/amazon-watcher-stack-0.1.0.tgz
     version: 0.1.0
+  tiktok-analytics-stack:
+  - apiVersion: v2
+    appVersion: "0.1"
+    created: "2026-06-08T17:21:46.466775179Z"
+    description: A Helm chart for deploying the complete TikTok Analytics Stack (Backend,
+      Worker, UI, Database, Redis, and Ingress routing)
+    digest: a82f80e27e43621d3bec38f57742d19f33fff5fc21455caf2eac384b1f6d56bb
+    keywords:
+    - tiktok
+    - analytics
+    - bot
+    - monitoring
+    maintainers:
+    - email: maborak@maborak.com
+      name: maborak
+    name: tiktok-analytics-stack
+    type: application
+    urls:
+    - https://maborak-technologies-inc.github.io/helm/tiktok-analytics-stack-0.1.0.tgz
+    version: 0.1.0
   zabbix:
   - apiVersion: v2
     appVersion: 7.4.6
-    created: "2026-06-08T03:29:15.638052569Z"
+    created: "2026-06-08T17:21:46.467602182Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
-    digest: 558d75c1adfdd45586a21fc09212b70e87c68f81a845fd12682853176b61358d
+    digest: 41f5a0819d5dbba5398e3f31807e28b89e47f72287df1658413fe386abfd6fa9
     icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png
     name: zabbix
     urls:
@@ -34,11 +54,11 @@ entries:
   zabbix-stack:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2026-06-08T03:29:15.638623537Z"
+    created: "2026-06-08T17:21:46.468080985Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
     digest: 7d26643e0dd7a90b3aa6f9f27835bdbcbcd55d4ccbef16a20604b4a7bc86777d
     name: zabbix-stack
     urls:
     - https://maborak-technologies-inc.github.io/helm/zabbix-stack-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-08T03:29:15.634600231Z"
+generated: "2026-06-08T17:21:46.461516211Z"
