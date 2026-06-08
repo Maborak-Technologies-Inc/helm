@@ -96,9 +96,20 @@ spec:
               {{- include "amazon-watcher-stack.backend.computedEnv" . | nindent 14 }}
             resources:
               {{- toYaml .Values.backend.cronjob.resources | nindent 14 }}
+            {{- if .Values.global.storage.enabled }}
+            volumeMounts:
+              - name: shared-storage
+                mountPath: {{ .Values.backend.env.APT_BACKEND_SCREENSHOT_STORAGE_PATH | default "/var/screenshots" }}
+            {{- end }}
             {{- with .Values.securityContext }}
             securityContext:
               {{- toYaml . | nindent 14 }}
             {{- end }}
+          {{- if .Values.global.storage.enabled }}
+          volumes:
+            - name: shared-storage
+              persistentVolumeClaim:
+                claimName: {{ include "amazon-watcher-stack.fullname" . }}-storage
+          {{- end }}
           restartPolicy: OnFailure
 {{- end }}
