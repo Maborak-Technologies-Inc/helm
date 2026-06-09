@@ -528,7 +528,7 @@ install_tiktok_analytics() {
 
     # Configure ignoreDifferences for Rollout replicas (HPA manages these)
     print_info "Setting ignoreDifferences for Rollout replicas..."
-    argocd app patch "${APP_NAME}" --type merge -p \
+    argocd app patch "${APP_NAME}" --type merge --patch \
         '{"spec":{"ignoreDifferences":[{"group":"argoproj.io","kind":"Rollout","jsonPointers":["/spec/replicas"]}]}}' 2>/dev/null || \
         print_warn "Could not set ignoreDifferences (may require manual configuration)"
 
@@ -680,7 +680,7 @@ install_amazon_watcher() {
 
     # Configure ignoreDifferences for Rollout replicas (HPA manages these)
     print_info "Setting ignoreDifferences for Rollout replicas..."
-    argocd app patch "${APP_NAME}" --type merge -p \
+    argocd app patch "${APP_NAME}" --type merge --patch \
         '{"spec":{"ignoreDifferences":[{"group":"argoproj.io","kind":"Rollout","jsonPointers":["/spec/replicas"]}]}}' 2>/dev/null || \
         print_warn "Could not set ignoreDifferences (may require manual configuration)"
 
