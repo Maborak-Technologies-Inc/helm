@@ -52,6 +52,12 @@ spec:
           image: {{ include "tiktok-analytics-stack.backend.image" . }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           workingDir: /app
+          command: ["python", "api_main.py"]
+          args:
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | quote }}
           env:
             {{- include "tiktok-analytics-stack.backend.computedEnv" . | nindent 12 }}
           ports:
