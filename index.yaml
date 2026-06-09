@@ -3,10 +3,10 @@ entries:
   amazon-watcher-stack:
   - apiVersion: v2
     appVersion: "0.1"
-    created: "2026-06-08T17:21:46.464375542Z"
+    created: "2026-06-09T15:50:33.427439668Z"
     description: A Helm chart for deploying the complete Amazon Watcher Stack (Backend,
       UI, Screenshot service, Database, and Ingress routing)
-    digest: eb0030f46fcfa43005f89a3d388e380ef37c43fc8da3545b8b23230072a67adf
+    digest: 800da3b3e246eb7680bee4e13a9fceb311ee6e7254d4dd15df39f85dfe5db3d9
     keywords:
     - amazon
     - watcher
@@ -23,10 +23,10 @@ entries:
   tiktok-analytics-stack:
   - apiVersion: v2
     appVersion: "0.1"
-    created: "2026-06-08T17:21:46.466775179Z"
+    created: "2026-06-09T15:50:33.429224464Z"
     description: A Helm chart for deploying the complete TikTok Analytics Stack (Backend,
       Worker, UI, Database, Redis, and Ingress routing)
-    digest: a82f80e27e43621d3bec38f57742d19f33fff5fc21455caf2eac384b1f6d56bb
+    digest: cfb52de235378df75b3a3fae0fb69cc7b22385f4d42fa702bf97f20f6bd6d41d
     keywords:
     - tiktok
     - analytics
@@ -43,9 +43,9 @@ entries:
   zabbix:
   - apiVersion: v2
     appVersion: 7.4.6
-    created: "2026-06-08T17:21:46.467602182Z"
+    created: "2026-06-09T15:50:33.429789435Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
-    digest: 41f5a0819d5dbba5398e3f31807e28b89e47f72287df1658413fe386abfd6fa9
+    digest: 76bec0b81d04dc96d5834da33232ed0b37265e2e6ae25db64aafc1497c2a0de1
     icon: https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png
     name: zabbix
     urls:
@@ -54,11 +54,11 @@ entries:
   zabbix-stack:
   - apiVersion: v2
     appVersion: 7.2.2
-    created: "2026-06-08T17:21:46.468080985Z"
+    created: "2026-06-09T15:50:33.430549947Z"
     description: A Helm chart for deploying Zabbix Server, Zabbix UI, and MariaDB.
     digest: 7d26643e0dd7a90b3aa6f9f27835bdbcbcd55d4ccbef16a20604b4a7bc86777d
     name: zabbix-stack
     urls:
     - https://maborak-technologies-inc.github.io/helm/zabbix-stack-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-08T17:21:46.461516211Z"
+generated: "2026-06-09T15:50:33.424304201Z"
