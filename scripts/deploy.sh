@@ -630,13 +630,12 @@ status_tiktok_analytics() {
     fi
 
     if kubectl get namespace ${NAMESPACE} &> /dev/null; then
-        HELM_RELEASE="tiktok-analytics-stack${APP_NAME}"
         echo "Pods:"
-        kubectl get pods -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        kubectl get pods -n ${NAMESPACE} -l app.kubernetes.io/instance=${APP_NAME}
         echo ""
 
         echo "Services:"
-        kubectl get svc -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        kubectl get svc -n ${NAMESPACE} -l app.kubernetes.io/instance=${APP_NAME}
         echo ""
     else
         print_warn "Namespace '${NAMESPACE}' does not exist"
@@ -1010,17 +1009,16 @@ status_amazon_watcher() {
     fi
 
     if kubectl get namespace ${NAMESPACE} &> /dev/null; then
-        HELM_RELEASE="amazon-watcher-stack${APP_NAME}"
         echo "Pods:"
-        kubectl get pods -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        kubectl get pods -n ${NAMESPACE} -l app.kubernetes.io/instance=${APP_NAME}
         echo ""
 
         echo "Services:"
-        kubectl get svc -n ${NAMESPACE} -l app=${HELM_RELEASE}
+        kubectl get svc -n ${NAMESPACE} -l app.kubernetes.io/instance=${APP_NAME}
         echo ""
 
         echo "PersistentVolumeClaims:"
-        kubectl get pvc -n ${NAMESPACE} -l app=${HELM_RELEASE} 2>/dev/null || echo "  No PVCs found"
+        kubectl get pvc -n ${NAMESPACE} -l app.kubernetes.io/instance=${APP_NAME} 2>/dev/null || echo "  No PVCs found"
     else
         print_warn "Namespace '${NAMESPACE}' does not exist"
     fi
