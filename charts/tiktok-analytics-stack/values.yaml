@@ -424,7 +424,7 @@ ingress:
 secrets:
   databasePassword: ""
   redisPassword: ""
-  jwtSecret: "your-super-secret-jwt-key-here-change-this-in-production"
+  jwtSecret: "ljksdfkjlsdfjksdjfsdfjklskjdflkjsdkfjslkdjfwweiwoieowieoiw"
 
 # Service Account
 serviceAccount:
