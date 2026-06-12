@@ -117,7 +117,7 @@ check_prerequisites() {
     fi
 
     # Check if logged into ArgoCD
-    if ! argocd account get-user-info &> /dev/null; then
+    if ! argocd account get-user-info 2>/dev/null | grep -q "Logged In: true"; then
         print_warn "Not logged into ArgoCD. Attempting to login..."
         setup_argocd_access
     fi
