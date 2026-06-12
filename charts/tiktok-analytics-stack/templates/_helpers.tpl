@@ -209,11 +209,11 @@ Call at the top of any template that needs database access.
 
 {{/*
 Backend environment variables - iterate over env map (prefixes already included)
-Skips empty values and special computed vars (PHOVEUS_BACKEND_DATABASE_URL, PHOVEUS_BACKEND_REDIS_URL, PHOVEUS_BACKEND_DOMAIN_UI)
+Skips empty values and special computed vars (PHOVEUS_BACKEND_DATABASE_URL, PHOVEUS_BACKEND_REDIS_URL, PHOVEUS_BACKEND_DOMAIN_UI, PHOVEUS_BACKEND_JWT_SECRET)
 */}}
 {{- define "tiktok-analytics-stack.backend.env" -}}
 {{- range $key, $value := .Values.backend.env }}
-{{- if and $value (ne $key "PHOVEUS_BACKEND_DATABASE_URL") (ne $key "PHOVEUS_BACKEND_REDIS_URL") (ne $key "PHOVEUS_BACKEND_DOMAIN_UI") }}
+{{- if and $value (ne $key "PHOVEUS_BACKEND_DATABASE_URL") (ne $key "PHOVEUS_BACKEND_REDIS_URL") (ne $key "PHOVEUS_BACKEND_DOMAIN_UI") (ne $key "PHOVEUS_BACKEND_JWT_SECRET") }}
 - name: {{ $key }}
   value: {{ $value | quote }}
 {{- end }}
