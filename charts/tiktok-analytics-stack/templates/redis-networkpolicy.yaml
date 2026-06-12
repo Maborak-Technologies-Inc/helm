@@ -23,12 +23,20 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.redis.port }}
-    # Allow traffic from Worker
+    # Allow traffic from Workers
     - from:
         - podSelector:
             matchLabels:
               {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
               app.kubernetes.io/component: worker
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: worker-credits
+        - podSelector:
+            matchLabels:
+              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: worker-warm-cache
       ports:
         - protocol: TCP
           port: {{ .Values.redis.port }}
