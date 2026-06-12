@@ -175,20 +175,20 @@ Shared across: backend-rollout, worker-deployment.
       name: {{ include "tiktok-analytics-stack.fullname" . }}-redis-secret
       key: redis-password
 {{- end }}
-- name: PHOVEU_BACKEND_JWT_SECRET
+- name: PHOVEUS_BACKEND_JWT_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ include "tiktok-analytics-stack.fullname" . }}-backend-secret
       key: jwt-secret
-- name: PHOVEU_BACKEND_DATABASE_URL
-  value: {{ .Values.backend.env.PHOVEU_BACKEND_DATABASE_URL | default (include "tiktok-analytics-stack.db.url" .) | quote }}
-{{- if or .Values.redis.enabled .Values.backend.env.PHOVEU_BACKEND_REDIS_URL }}
-- name: PHOVEU_BACKEND_REDIS_URL
-  value: {{ .Values.backend.env.PHOVEU_BACKEND_REDIS_URL | default (include "tiktok-analytics-stack.redis.url" .) | quote }}
+- name: PHOVEUS_BACKEND_DATABASE_URL
+  value: {{ .Values.backend.env.PHOVEUS_BACKEND_DATABASE_URL | default (include "tiktok-analytics-stack.db.url" .) | quote }}
+{{- if or .Values.redis.enabled .Values.backend.env.PHOVEUS_BACKEND_REDIS_URL }}
+- name: PHOVEUS_BACKEND_REDIS_URL
+  value: {{ .Values.backend.env.PHOVEUS_BACKEND_REDIS_URL | default (include "tiktok-analytics-stack.redis.url" .) | quote }}
 {{- end }}
-- name: DOMAIN_UI
-{{- if .Values.backend.env.DOMAIN_UI }}
-  value: {{ .Values.backend.env.DOMAIN_UI | quote }}
+- name: PHOVEUS_BACKEND_DOMAIN_UI
+{{- if .Values.backend.env.PHOVEUS_BACKEND_DOMAIN_UI }}
+  value: {{ .Values.backend.env.PHOVEUS_BACKEND_DOMAIN_UI | quote }}
 {{- else if .Values.global.domain.ui }}
   value: {{ printf "http://%s" .Values.global.domain.ui | quote }}
 {{- else }}
@@ -202,18 +202,18 @@ Database validation - fails if database is disabled without an external URL.
 Call at the top of any template that needs database access.
 */}}
 {{- define "tiktok-analytics-stack.backend.validateDatabase" -}}
-{{- if and (not .Values.database.enabled) (not .Values.backend.env.PHOVEU_BACKEND_DATABASE_URL) }}
-{{- fail "ERROR: database.enabled=false but PHOVEU_BACKEND_DATABASE_URL is empty. You must provide an external database URL when the internal database is disabled." }}
+{{- if and (not .Values.database.enabled) (not .Values.backend.env.PHOVEUS_BACKEND_DATABASE_URL) }}
+{{- fail "ERROR: database.enabled=false but PHOVEUS_BACKEND_DATABASE_URL is empty. You must provide an external database URL when the internal database is disabled." }}
 {{- end }}
 {{- end }}
 
 {{/*
 Backend environment variables - iterate over env map (prefixes already included)
-Skips empty values and special computed vars (PHOVEU_BACKEND_DATABASE_URL, PHOVEU_BACKEND_REDIS_URL, DOMAIN_UI)
+Skips empty values and special computed vars (PHOVEUS_BACKEND_DATABASE_URL, PHOVEUS_BACKEND_REDIS_URL, PHOVEUS_BACKEND_DOMAIN_UI)
 */}}
 {{- define "tiktok-analytics-stack.backend.env" -}}
 {{- range $key, $value := .Values.backend.env }}
-{{- if and $value (ne $key "PHOVEU_BACKEND_DATABASE_URL") (ne $key "PHOVEU_BACKEND_REDIS_URL") (ne $key "DOMAIN_UI") }}
+{{- if and $value (ne $key "PHOVEUS_BACKEND_DATABASE_URL") (ne $key "PHOVEUS_BACKEND_REDIS_URL") (ne $key "PHOVEUS_BACKEND_DOMAIN_UI") }}
 - name: {{ $key }}
   value: {{ $value | quote }}
 {{- end }}

@@ -15,7 +15,7 @@ spec:
     count: 3
     provider:
       web:
-        url: "http://{{ include "tiktok-analytics-stack.backend.canaryServiceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" }}{{ .Values.backend.healthCheck.path | default "/health" }}"
+        url: "http://{{ include "tiktok-analytics-stack.backend.canaryServiceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" }}{{ .Values.backend.healthCheck.path | default "/health" }}"
         headers:
         - key: Content-Type
           value: application/json

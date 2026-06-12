@@ -57,18 +57,18 @@ spec:
             - "--host"
             - "0.0.0.0"
             - "--port"
-            - {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | quote }}
+            - {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | quote }}
           env:
             {{- include "tiktok-analytics-stack.backend.computedEnv" . | nindent 12 }}
           ports:
             - name: http
-              containerPort: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+              containerPort: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
               protocol: TCP
           {{- if .Values.backend.healthCheck.enabled }}
           livenessProbe:
             httpGet:
               path: {{ .Values.backend.healthCheck.path }}
-              port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+              port: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
             initialDelaySeconds: {{ .Values.backend.healthCheck.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.healthCheck.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.backend.healthCheck.livenessProbe.timeoutSeconds }}
@@ -76,7 +76,7 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.backend.healthCheck.path }}
-              port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+              port: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
             initialDelaySeconds: {{ .Values.backend.healthCheck.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.healthCheck.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.backend.healthCheck.readinessProbe.timeoutSeconds }}

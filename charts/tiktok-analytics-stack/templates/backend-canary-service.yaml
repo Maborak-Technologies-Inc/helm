@@ -9,7 +9,7 @@ metadata:
 spec:
   type: {{ .Values.backend.service.type }}
   ports:
-    - port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+    - port: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
       targetPort: http
       protocol: TCP
       name: http

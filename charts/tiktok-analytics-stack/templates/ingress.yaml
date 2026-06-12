@@ -33,7 +33,7 @@ spec:
               service:
                 name: {{ include "tiktok-analytics-stack.backend.serviceName" . }}
                 port:
-                  number: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+                  number: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
 {{- end }}
 {{- if and .Values.ui.enabled .Values.global.domain.ui }}
 ---

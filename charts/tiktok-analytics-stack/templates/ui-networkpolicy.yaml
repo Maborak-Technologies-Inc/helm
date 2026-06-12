@@ -43,7 +43,7 @@ spec:
               app.kubernetes.io/component: backend
       ports:
         - protocol: TCP
-          port: {{ .Values.backend.env.PHOVEU_BACKEND_UVI_PORT | default "9020" | int }}
+          port: {{ .Values.backend.env.PHOVEUS_BACKEND_UVI_PORT | default "9020" | int }}
     - to:
         namespaceSelector: {}
       ports:
