@@ -1,0 +1,45 @@
+{{- $hpaEnabled := .Values.workerCredits.autoscaling.enabled }}
+{{- if ne (printf "%v" .Values.global.hpa) "" }}
+  {{- $hpaEnabled = .Values.global.hpa }}
+{{- end }}
+{{- if and .Values.workerCredits.enabled $hpaEnabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-worker-credits
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-credits
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "tiktok-analytics-stack.fullname" . }}-worker-credits
+  minReplicas: {{ .Values.workerCredits.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.workerCredits.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.workerCredits.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.workerCredits.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.workerCredits.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.workerCredits.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.workerCredits.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.workerCredits.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}

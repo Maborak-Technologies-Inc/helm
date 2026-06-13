@@ -1,0 +1,45 @@
+{{- $hpaEnabled := .Values.workerWarmCache.autoscaling.enabled }}
+{{- if ne (printf "%v" .Values.global.hpa) "" }}
+  {{- $hpaEnabled = .Values.global.hpa }}
+{{- end }}
+{{- if and .Values.workerWarmCache.enabled $hpaEnabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "tiktok-analytics-stack.fullname" . }}-worker-warm-cache
+  labels:
+    {{- include "tiktok-analytics-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-warm-cache
+  {{- if .Values.argocd.annotations }}
+  annotations:
+    {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "tiktok-analytics-stack.fullname" . }}-worker-warm-cache
+  minReplicas: {{ .Values.workerWarmCache.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.workerWarmCache.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.workerWarmCache.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.workerWarmCache.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.workerWarmCache.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.workerWarmCache.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.workerWarmCache.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.workerWarmCache.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}
