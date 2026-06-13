@@ -12,7 +12,13 @@ metadata:
     {{- include "tiktok-analytics-stack.argocd.annotations" . | nindent 4 }}
   {{- end }}
 spec:
+  {{- $hpaEnabled := .Values.workerCredits.autoscaling.enabled }}
+  {{- if ne (printf "%v" .Values.global.hpa) "" }}
+    {{- $hpaEnabled = .Values.global.hpa }}
+  {{- end }}
+  {{- if not $hpaEnabled }}
   replicas: {{ .Values.workerCredits.replicas | default 1 }}
+  {{- end }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit | default 10 }}
   selector:
     matchLabels:

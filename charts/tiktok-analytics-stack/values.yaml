@@ -285,7 +285,7 @@ backend:
 
 # TikTok Listener Worker Configuration
 worker:
-  enabled: false
+  enabled: true
   replicas: 1
   command: "python cli.py system tiktok run-listener"
   resources:
@@ -298,6 +298,11 @@ worker:
   networkPolicy:
     enabled: true
     allowed: ["192.168.0.0/24"]
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
 
 # TikTok Credits Worker Configuration
 workerCredits:
@@ -314,6 +319,11 @@ workerCredits:
   networkPolicy:
     enabled: true
     allowed: ["192.168.0.0/24"]
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
 
 # TikTok Warm Cache Worker Configuration
 workerWarmCache:
@@ -330,6 +340,11 @@ workerWarmCache:
   networkPolicy:
     enabled: true
     allowed: ["192.168.0.0/24"]
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
 
 # UI Service Configuration
 ui:
