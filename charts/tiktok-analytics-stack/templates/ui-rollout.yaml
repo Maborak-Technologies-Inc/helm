@@ -15,6 +15,9 @@ spec:
   {{- if ne (printf "%v" .Values.global.hpa) "" }}
     {{- $hpaEnabled = .Values.global.hpa }}
   {{- end }}
+  {{- if eq (printf "%v" .Values.ui.autoscaling.enabled) "false" }}
+    {{- $hpaEnabled = false }}
+  {{- end }}
   {{- if not $hpaEnabled }}
   replicas: {{ .Values.ui.replicas }}
   {{- else if .Values.ui.autoscaling.minReplicas }}

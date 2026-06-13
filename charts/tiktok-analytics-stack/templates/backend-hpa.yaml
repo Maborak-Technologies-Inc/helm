@@ -2,6 +2,9 @@
 {{- if ne (printf "%v" .Values.global.hpa) "" }}
   {{- $hpaEnabled = .Values.global.hpa }}
 {{- end }}
+{{- if eq (printf "%v" .Values.backend.autoscaling.enabled) "false" }}
+  {{- $hpaEnabled = false }}
+{{- end }}
 {{- if and .Values.backend.enabled $hpaEnabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
