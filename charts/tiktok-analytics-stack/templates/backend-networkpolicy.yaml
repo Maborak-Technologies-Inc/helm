@@ -40,26 +40,30 @@ spec:
     {{- toYaml .Values.backend.networkPolicy.egress | nindent 4 }}
   {{- else }}
   egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: database
-        - podSelector:
-            matchLabels:
-              {{- include "tiktok-analytics-stack.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: redis
-      ports:
+    # Allow egress to PostgreSQL and Redis (both internal and external)
+    - ports:
         - protocol: TCP
           port: 5432
         - protocol: TCP
+          port: 6432
+        - protocol: TCP
+          port: 6433
+        - protocol: TCP
           port: 6379
+    # Allow DNS and HTTPS egress
     - to:
-        namespaceSelector: {}
+        - namespaceSelector: {}
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 443
+    {{- if .Values.backend.networkPolicy.allowed }}
+    - to:
+        {{- range .Values.backend.networkPolicy.allowed }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+    {{- end }}
   {{- end }}
 {{- end }}
